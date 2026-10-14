@@ -1,0 +1,39 @@
+{
+  "name": "sidneyb-uk",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "github": "node scripts/github-snapshot.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "^5.2.0",
+    "@fontsource-variable/instrument-sans": "^5.2.0",
+    "@fontsource-variable/jetbrains-mono": "^5.2.0",
+    "d3-geo": "^3.1.1",
+    "katex": "^0.16.47",
+    "marked": "^12.0.2",
+    "next": "^16.0.0",
+    "opensheetmusicdisplay": "^1.9.0",
+    "pg": "^8.23.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "server-only": "^0.0.1",
+    "swr": "^2.5.1",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2"
+  },
+  "devDependencies": {
+    "@types/d3-geo": "^3.1.1",
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/topojson-client": "^3.1.5",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,57 @@
+# sidneyb.uk on Dokploy. In Dokploy: Create Service → Compose → point it at this repository and set
+# "Compose Path" to ./docker-compose.dokploy.yml. The README ("Putting it on Dokploy") has every step.
+#
+# How it differs from docker-compose.yml: no ports are opened on the server (Dokploy's own Traefik reaches the
+# site over its network and adds HTTPS), and the database is not reachable from outside at all.
+#
+# In the Environment tab, set at least:
+#   ADMIN_PASSWORD=...        eight characters or more
+#   APP_SECRET=...            openssl rand -hex 32   (never change it afterwards)
+#   POSTGRES_PASSWORD=...     letters and numbers only
+#   SITE_URL=https://sidneyb.uk
+# In the Domains tab, add the domain for service "app", container port 3000, with HTTPS (Let's Encrypt).
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    # Dokploy writes the Environment tab to a .env file beside this one.
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-sidneyb}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-sidneyb}
+      UPLOAD_DIR: /data/uploads
+    expose:
+      - 3000
+    volumes:
+      - uploads:/data/uploads
+    networks:
+      - default
+      - dokploy-network
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sidneyb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-sidneyb}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sidneyb} -d ${POSTGRES_DB:-sidneyb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - default
+
+# Named volumes, so Dokploy's Volume Backups can back them up: the database, and uploaded files.
+volumes:
+  pgdata:
+  uploads:
+
+networks:
+  dokploy-network:
+    external: true
