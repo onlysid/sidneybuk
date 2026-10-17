@@ -39,7 +39,7 @@ await build({
 // The publisher that hosts the preview mistook one build for a different kind of page because of a shortened
 // variable name the bundler happened to choose ("iD", sitting directly before an embedded picture). The name is
 // changed here, where it is declared and where it is used, so that cannot happen again.
-const js = readFileSync(here(".out/entry.js"), "utf8").replaceAll("</script", "<\\/script").replace(/(?<=var |,)iD(?==")/g, "iD$").replace(/\$\{iD\}/g, "${iD$}");
+const js = readFileSync(here(".out/entry.js"), "utf8").replaceAll("</script", "<\\/script").replace(/(?<=var |,)(iD|ID|Id|id)(?==")/g, "$1$").replace(/\$\{(iD|ID|Id|id)\}/g, "${$1$}");
 const css = readFileSync(here(".out/entry.css"), "utf8");
 writeFileSync(
   out,

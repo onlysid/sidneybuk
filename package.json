@@ -12,6 +12,8 @@
     "@fontsource-variable/bricolage-grotesque": "^5.2.0",
     "@fontsource-variable/instrument-sans": "^5.2.0",
     "@fontsource-variable/jetbrains-mono": "^5.2.0",
+    "@simplewebauthn/browser": "^14.0.0",
+    "@simplewebauthn/server": "^14.0.3",
     "d3-geo": "^3.1.1",
     "katex": "^0.16.47",
     "marked": "^12.0.2",

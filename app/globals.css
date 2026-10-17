@@ -4319,3 +4319,14 @@ html[data-lost="500"] .bg .b2 { translate: 50vw 0; rotate: 20deg; }
   .lost-fog ellipse, .lost-pin, .lost-needle, .lost-lid, .lost-trace, .lost-spark line, .lost-art { animation: none; }
   .lost-trace { stroke-dashoffset: 0; }
 }
+
+/* Things that move inside or under the frosted glass make the glass redraw every frame; they rest early. */
+.lens:not([data-on="true"]) { animation-play-state: paused; }
+html[data-rest] .lens, html[data-rest] .name, html[data-rest] .live canvas, html[data-rest] .work-logo img { animation-play-state: paused !important; }
+
+/* Passkeys under Connections */
+.ad-keys { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.ad-keys li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--edge); background: color-mix(in srgb, var(--bg) 50%, transparent); }
+.ad-keys li b { font-weight: 600; }
+.ad-keys li .mono { font-size: 0.66rem; color: var(--muted); flex: 1; }
+.ad-switch small { display: block; font-size: 0.8rem; }

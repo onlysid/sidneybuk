@@ -7,7 +7,8 @@ import { createPortal } from "react-dom";
 import { mutate } from "swr";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { api, type AdminActivity, type KeyGroup, type Media, type AppleMusicStatus, type StravaStatus } from "@/lib/admin/api";
+import { api, type AdminActivity, type KeyGroup, type Media, type AppleMusicStatus, type Passkeys, type StravaStatus } from "@/lib/admin/api";
+import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import { KIND_NAMES, markOf, PADEL_KINDS, padelResult, RIDE_KINDS, scoreOf, writtenUp, type ActivityLog } from "@/lib/training";
 import { counted, lastOf, logged, numberOf, say as sayLift, today, unlogged, type Lift } from "@/lib/gym";
 import { FEELS, TYPES, typeName } from "@/lib/runlog";
@@ -1171,6 +1172,7 @@ function Connections() {
           </form>
         );
       })}
+      {groups && <PasskeysPanel />}
     </>
   );
 }
@@ -2277,10 +2279,31 @@ function MediaScreen() {
   );
 }
 
-function SignIn({ onDone }: { onDone: () => void }) {
+function SignIn({ onDone, passkeys }: { onDone: () => void; passkeys: boolean }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // After the password, when a passkey must follow it.
+  const [second, setSecond] = useState(false);
+  const finish = async () => {
+    // The password (or passkey) was right; make sure the browser kept the sign-in before moving on.
+    if (!api.demo && !(await api.session()).signedIn) setError("The sign-in worked, but this browser did not keep the sign-in cookie. If the site is behind a proxy over plain http, set INSECURE_COOKIES=1 in .env and restart; otherwise allow cookies for this address.");
+    else onDone();
+  };
+  const withPasskey = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const options = await api.passkeyChallenge();
+      const answer = await startAuthentication({ optionsJSON: options as never });
+      await api.passkeySignIn(answer);
+      await finish();
+    } catch (err) {
+      const e = err as Error & { name?: string };
+      setError(e.name === "NotAllowedError" ? "The passkey was not used. Try again, or use the password." : e.message);
+    }
+    setBusy(false);
+  };
   return (
     <form
       className="ad-panel ad-signin glass"
@@ -2289,10 +2312,13 @@ function SignIn({ onDone }: { onDone: () => void }) {
         setBusy(true);
         setError("");
         try {
-          await api.signIn(password);
-          // The password was right; make sure the browser kept the sign-in before moving on.
-          if (!api.demo && !(await api.session()).signedIn) setError("The password is right, but this browser did not keep the sign-in cookie. If the site is behind a proxy over plain http, set INSECURE_COOKIES=1 in .env and restart; otherwise allow cookies for this address.");
-          else onDone();
+          const r = await api.signIn(password);
+          if (r.needPasskey) {
+            setSecond(true);
+            setBusy(false);
+            return withPasskey();
+          }
+          await finish();
         } catch (err) {
           setError((err as Error).message);
         }
@@ -2300,16 +2326,124 @@ function SignIn({ onDone }: { onDone: () => void }) {
       }}
     >
       <h1 className="ad-title">Admin</h1>
-      <div className="ad-field" data-wide="true">
-        <label htmlFor="ad-password">Password</label>
-        <input id="ad-password" type="password" autoComplete="current-password" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} />
-        {api.demo && <p className="ad-help">This is the preview: any password works, and nothing you change is kept after you close it.</p>}
-        {error && <p className="ad-error" role="alert">{error}</p>}
-      </div>
-      <button type="submit" className="ad-btn ad-main" disabled={busy || !password}>
-        {busy ? "Checking…" : "Sign in"}
-      </button>
+      {second ? (
+        <div className="ad-field" data-wide="true">
+          <p className="ad-help">The password is right. Now the passkey: Face ID, Touch ID, a password manager or a security key.</p>
+          {error && <p className="ad-error" role="alert">{error}</p>}
+          <button type="button" className="ad-btn ad-main" disabled={busy} onClick={withPasskey}>
+            {busy ? "Waiting for the passkey…" : "Use the passkey"}
+          </button>
+        </div>
+      ) : (
+        <>
+          {passkeys && (
+            <div className="ad-field" data-wide="true">
+              <button type="button" className="ad-btn ad-main" disabled={busy} onClick={withPasskey}>
+                {busy ? "Waiting for the passkey…" : "Sign in with a passkey"}
+              </button>
+              <p className="ad-help">Or with the password:</p>
+            </div>
+          )}
+          <div className="ad-field" data-wide="true">
+            <label htmlFor="ad-password">Password</label>
+            <input id="ad-password" type="password" autoComplete="current-password" autoFocus={!passkeys} value={password} onChange={(e) => setPassword(e.target.value)} />
+            {api.demo && <p className="ad-help">This is the preview: any password works, and nothing you change is kept after you close it.</p>}
+            {error && <p className="ad-error" role="alert">{error}</p>}
+          </div>
+          <button type="submit" className={`ad-btn ${passkeys ? "ad-quiet" : "ad-main"}`} disabled={busy || !password}>
+            {busy ? "Checking…" : "Sign in"}
+          </button>
+        </>
+      )}
     </form>
+  );
+}
+
+// The passkeys that can open the admin area, under Connections.
+function PasskeysPanel() {
+  const toast = useContext(Toast);
+  const [have, setHave] = useState<Passkeys | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    api.passkeys().then(setHave, (err) => toast(err.message, true));
+  }, [toast]);
+  const can = typeof window !== "undefined" && "PublicKeyCredential" in window;
+  const add = async () => {
+    const name = await textBox("A name for this passkey (this MacBook, my iPhone, 1Password…)", "", "Add");
+    if (name === null || name === undefined) return;
+    setBusy(true);
+    try {
+      const options = await api.passkeyAddChallenge();
+      const answer = await startRegistration({ optionsJSON: options as never });
+      setHave(await api.passkeyAdd(answer, name || "Passkey"));
+      toast("Passkey added.");
+    } catch (err) {
+      const e = err as Error & { name?: string };
+      toast(e.name === "NotAllowedError" ? "No passkey was made." : e.name === "InvalidStateError" ? "This device already has a passkey for the site." : e.message, true);
+    }
+    setBusy(false);
+  };
+  const remove = async (id: string, name: string) => {
+    if (!(await confirmBox(`Remove the passkey "${name}"?`, { yes: "Remove" }))) return;
+    try {
+      setHave(await api.passkeyRemove(id));
+      toast("Passkey removed.");
+    } catch (err) {
+      toast((err as Error).message, true);
+    }
+  };
+  const twoStep = async (on: boolean) => {
+    try {
+      setHave(await api.passkeyTwoStep(on));
+      toast(on ? "The password now needs a passkey after it." : "The password is enough again.");
+    } catch (err) {
+      toast((err as Error).message, true);
+    }
+  };
+  const when = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return (
+    <section className="ad-panel glass">
+      <h2 className="ad-h2">Passkeys</h2>
+      <p className="ad-help">
+        Sign in with Face ID, Touch ID, a password manager or a security key instead of typing the password. A passkey cannot be phished or guessed. Add one from each device (or from a password manager, which then works everywhere).
+      </p>
+      {!have ? (
+        <p className="ad-help">Loading…</p>
+      ) : (
+        <>
+          {have.passkeys.length > 0 && (
+            <ul className="ad-keys">
+              {have.passkeys.map((k) => (
+                <li key={k.id}>
+                  <b>{k.name}</b>
+                  <span className="mono">
+                    added {when(k.createdAt)}
+                    {k.lastUsedAt ? ` · used ${when(k.lastUsedAt)}` : ""}
+                  </span>
+                  <button type="button" className="ad-btn ad-quiet" onClick={() => remove(k.id, k.name)}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="ad-row">
+            <button type="button" className="ad-btn ad-main" disabled={busy || !can || api.demo} onClick={add}>
+              {busy ? "Waiting…" : "Add a passkey"}
+            </button>
+            {!can && <span className="ad-help">This browser cannot make passkeys.</span>}
+            {api.demo && <span className="ad-help">Passkeys need the real site, not the preview.</span>}
+          </div>
+          <label className="ad-switch">
+            <input type="checkbox" checked={have.twoStep} disabled={!have.passkeys.length} onChange={(e) => twoStep(e.target.checked)} />
+            <span>
+              Ask for a passkey after the password too
+              <small className="ad-help"> — the password alone no longer gets in. Needs a passkey first; lost all of them? Remove the <code>security</code> row from the settings table.</small>
+            </span>
+          </label>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -2339,7 +2473,7 @@ function Waiting() {
 export function AdminApp() {
   const pathname = usePathname();
   const router = useRouter();
-  const [session, setSession] = useState<{ signedIn: boolean; database: boolean; passwordSet: boolean } | null>(null);
+  const [session, setSession] = useState<{ signedIn: boolean; database: boolean; passwordSet: boolean; passkeys?: boolean; blocked?: boolean } | null>(null);
   // The message is also remembered outside this component: moving from one admin page to another can build the screen afresh, and "Deleted" said just…
   const [toast, setToast] = useState<Said | null>(() => (lastSaid && lastSaid.until > Date.now() ? lastSaid : null));
   const check = useCallback(
@@ -2350,7 +2484,9 @@ export function AdminApp() {
           // The menu and the pencil ask the same question elsewhere: tell them the answer has changed.
           void mutate("/api/admin/session", now, { revalidate: false });
         },
-        () => setSession({ signedIn: false, database: false, passwordSet: false }),
+        // A TypeError means the request never reached the site: something in the browser stopped it (an ad
+        // blocker, most likely). Any other failure is the site's own, and is shown as such.
+        (e: unknown) => setSession({ signedIn: false, database: false, passwordSet: false, blocked: e instanceof TypeError }),
       ),
     [],
   );
@@ -2369,6 +2505,15 @@ export function AdminApp() {
 
   let screen: React.ReactNode;
   if (!session) screen = <Waiting />;
+  else if (session.blocked)
+    screen = (
+      <section className="ad-panel glass">
+        <h1 className="ad-title">Something in this browser is in the way</h1>
+        <p className="ad-lede">
+          The admin area asked the site whether you are signed in, and the request was stopped before it left the browser. That is nearly always an ad blocker or privacy extension. Allow <code>{typeof location === "undefined" ? "this site" : location.host}</code> in it (or turn it off for this site) and <a href="/admin">load the page again</a>.
+        </p>
+      </section>
+    );
   else if (!session.database)
     screen = (
       <section className="ad-panel glass">
@@ -2383,7 +2528,7 @@ export function AdminApp() {
         <p className="ad-lede">Put <code>ADMIN_PASSWORD</code> (eight characters or more) in the <code>.env</code> file and restart the site.</p>
       </section>
     );
-  else if (!session.signedIn) screen = <SignIn onDone={check} />;
+  else if (!session.signedIn) screen = <SignIn onDone={check} passkeys={!!session.passkeys} />;
   else {
     const form = formFor(parts[0] ?? "");
     screen =

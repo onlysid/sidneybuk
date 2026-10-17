@@ -6,15 +6,44 @@ import { same, sign } from "./secrets";
 const COOKIE = "admin";
 const DAYS = 30;
 
-export async function signIn(password: string) {
+// Is this the password?
+export function rightPassword(password: string) {
   const expected = process.env.ADMIN_PASSWORD;
-  if (!expected || expected.length < 8 || !same(password, expected)) return false;
-  const until = String(Date.now() + DAYS * 86400000);
+  return !!expected && expected.length >= 8 && same(password, expected);
+}
+async function secure() {
   // The cookie is marked "https only" whenever the site is being reached over https (directly or through a reverse proxy).
   const h = await headers();
   const https = (h.get("x-forwarded-proto") ?? "").split(",")[0].trim() === "https" || (process.env.SITE_URL ?? "").startsWith("https://");
-  (await cookies()).set(COOKIE, `${until}.${sign(until)}`, { httpOnly: true, sameSite: "lax", secure: https && process.env.INSECURE_COOKIES !== "1", path: "/", maxAge: DAYS * 86400 });
+  return https && process.env.INSECURE_COOKIES !== "1";
+}
+// Lets this browser in for a month.
+export async function grant() {
+  const until = String(Date.now() + DAYS * 86400000);
+  const jar = await cookies();
+  jar.set(COOKIE, `${until}.${sign(until)}`, { httpOnly: true, sameSite: "lax", secure: await secure(), path: "/", maxAge: DAYS * 86400 });
+  jar.delete({ name: HALF, path: "/api/admin" });
+}
+export async function signIn(password: string) {
+  if (!rightPassword(password)) return false;
+  await grant();
   return true;
+}
+// When a passkey must follow the password, the right password only gets this far: a five-minute cookie that
+// says the password half is done. Finishing with a passkey turns it into the real thing.
+const HALF = "admin-half";
+export async function halfway() {
+  const until = String(Date.now() + 5 * 60000);
+  (await cookies()).set(HALF, `${until}.${sign("half" + until)}`, { httpOnly: true, sameSite: "strict", secure: await secure(), path: "/api/admin", maxAge: 300 });
+}
+export async function isHalfway() {
+  const [until, mark] = ((await cookies()).get(HALF)?.value ?? "").split(".");
+  if (!until || !mark) return false;
+  try {
+    return same(mark, sign("half" + until)) && Number(until) > Date.now();
+  } catch {
+    return false;
+  }
 }
 export async function signOut() {
   (await cookies()).delete(COOKIE);

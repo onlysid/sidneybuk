@@ -84,4 +84,19 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
       alter table activities add column log jsonb not null default '{}';
     `,
   },
+  {
+    id: "004_passkeys",
+    sql: `
+      -- Passkeys for signing in to the admin area (WebAuthn). One row per device or password manager.
+      create table if not exists passkeys (
+        id text primary key,                 -- the credential id, base64url
+        public_key text not null,            -- COSE public key, base64url
+        counter bigint not null default 0,
+        transports jsonb not null default '[]',
+        name text not null default '',
+        created_at timestamptz not null default now(),
+        last_used_at timestamptz
+      );
+    `,
+  },
 ];

@@ -74,3 +74,11 @@ The Connections page has the step-by-step for each.
 - Connect Strava and a music source under Connections, and set up the phone shortcuts.
 - Read `/privacy` against what you deploy.
 - Set up backups.
+
+## Keeping it up
+
+The site limits each address to 300 API calls a minute (10 sign-in attempts, 30 phone updates), and six wrong passwords in a row shut the door for ten minutes. That stops scripts and brute force; a real flood has to be stopped before it reaches the server. The usual way is to put the domain behind Cloudflare (free plan, proxy on): it absorbs floods, caches the static files near visitors and hides the server's address. Keep "Full (strict)" TLS mode and leave Dokploy's own certificate in place.
+
+Ad blockers sometimes stop the admin area's requests; it says so when that happens. Allow the site in the blocker.
+
+**Passkeys.** Under Connections, add a passkey (Face ID, Touch ID, a password manager or a security key) and sign in with it instead of the password. Tick "Ask for a passkey after the password too" to make the password alone insufficient. Locked out with every passkey gone? `delete from settings where key = 'security'` on the database, and the password is enough again.

@@ -206,11 +206,30 @@ export function HeroLogo() {
       }
     };
 
+    // Left alone, the page says so (data-rest on <html>): the strings then draw less often, and after longer
+    // they hold still, taking up where they left off at the next touch.
+    let lost = 0, pausedAt = 0;
     function draw(ms: number) {
       frame = 0;
       if (!seen) return;
-      if (!reduce) frame = requestAnimationFrame(draw);
-      const now = ms / 1000;
+      const rest = document.documentElement.dataset.rest;
+      if (!reduce) {
+        if (rest === "deep") {
+          if (!pausedAt) pausedAt = ms;
+          frame = -1; // waiting, so nothing else starts a second loop
+          window.setTimeout(() => (frame = requestAnimationFrame(draw)), 400);
+          return;
+        }
+        if (rest) {
+          frame = -1;
+          window.setTimeout(() => (frame = requestAnimationFrame(draw)), 33);
+        } else frame = requestAnimationFrame(draw);
+      }
+      if (pausedAt) {
+        lost += ms - pausedAt;
+        pausedAt = 0;
+      }
+      const now = (ms - lost) / 1000;
 
       // Turning over: squeeze to an edge, swap what the strings are doing, open out again.
       const p = reduce ? 1 : Math.min(1, (now - s.turned) / TURN);

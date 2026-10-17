@@ -6,7 +6,7 @@ import { useEffect } from "react";
 // Keeps the page from working when nobody benefits. The drifting background sits under a lot of frosted glass,
 // and every frame it moves all of that glass has to be blurred again, which is what warms a laptop up.
 //  - When nothing has been touched for a few seconds, the background holds still (it starts again at a touch);
-//    after most of a minute, the small decorations stop too.
+//    after twenty seconds, the small decorations stop too.
 //  - Anything scrolled out of sight stops animating until it is back in view.
 //  - When the tab is not being looked at, everything stops.
 export function Rest() {
@@ -19,8 +19,8 @@ export function Rest() {
       window.clearTimeout(timer);
       window.clearTimeout(long);
       timer = window.setTimeout(() => (root.dataset.rest = "true"), 6000);
-      // Left alone for most of a minute, the decorations stop as well.
-      long = window.setTimeout(() => (root.dataset.rest = "deep"), 45000);
+      // Left alone a while longer, the decorations stop as well.
+      long = window.setTimeout(() => (root.dataset.rest = "deep"), 20000);
     };
     const seen = () => (document.hidden ? (root.dataset.hidden = "true") : delete root.dataset.hidden);
     wake();
