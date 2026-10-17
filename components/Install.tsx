@@ -9,7 +9,16 @@ export function ServiceWorker() {
   useEffect(() => {
     // Not while developing: a kept copy of a page being worked on only gets in the way.
     if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator) || !/^https?:$/.test(window.location.protocol)) return;
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    navigator.serviceWorker.register("/sw.js").then((reg) => reg.update().catch(() => {})).catch(() => {});
+    // When a newer worker takes over from an older one, the page was built against the old files: load it
+    // again once so nothing old and new is mixed. (The first worker ever has nothing to replace.)
+    let had = !!navigator.serviceWorker.controller;
+    const swapped = () => {
+      if (had && !document.documentElement.dataset.leaving) window.location.reload();
+      had = true;
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", swapped);
+    return () => navigator.serviceWorker.removeEventListener("controllerchange", swapped);
   }, []);
   return null;
 }

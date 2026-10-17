@@ -2316,6 +2316,26 @@ function SignIn({ onDone }: { onDone: () => void }) {
 type Said = { text: string; bad: boolean; n: number; until: number };
 let lastSaid: Said | null = null;
 
+// "Loading…", and after a while a way out, since a page that never arrives is worse than one that says so.
+function Waiting() {
+  const [long, setLong] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setLong(true), 6000);
+    return () => window.clearTimeout(t);
+  }, []);
+  return (
+    <p className="ad-help">
+      Loading…
+      {long && (
+        <>
+          {" "}
+          This is taking a while. <a href="/admin">Load the page again</a>, and if that does not help, clear this site&rsquo;s data in the browser (an old copy of the site can get in the way after an update).
+        </>
+      )}
+    </p>
+  );
+}
+
 export function AdminApp() {
   const pathname = usePathname();
   const router = useRouter();
@@ -2348,7 +2368,7 @@ export function AdminApp() {
   const parts = useMemo(() => pathname.replace(/^\/admin\/?/, "").split("/").filter(Boolean), [pathname]);
 
   let screen: React.ReactNode;
-  if (!session) screen = <p className="ad-help">Loading…</p>;
+  if (!session) screen = <Waiting />;
   else if (!session.database)
     screen = (
       <section className="ad-panel glass">
