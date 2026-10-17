@@ -27,9 +27,9 @@
   --cell-3: #b184b8;
   --cell-4: #ecc6dc;
 
-  --display: "Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif;
-  --body: "Instrument Sans Variable", "Instrument Sans", system-ui, sans-serif;
-  --mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+  --display: var(--font-display, "Bricolage Grotesque Variable"), "Bricolage Grotesque", system-ui, sans-serif;
+  --body: var(--font-body, "Instrument Sans Variable"), "Instrument Sans", system-ui, sans-serif;
+  --mono: var(--font-mono, "JetBrains Mono Variable"), "JetBrains Mono", ui-monospace, monospace;
 
   --gutter: clamp(16px, 4vw, 40px);
   --spring: cubic-bezier(0.2, 0.9, 0.2, 1.15);

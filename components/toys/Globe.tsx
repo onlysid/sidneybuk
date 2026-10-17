@@ -9,6 +9,9 @@ import atlas from "world-atlas/countries-110m.json";
 import { site } from "@/lib/site";
 import { citiesNow, countryName, loadCities, loadStates, nearestCity } from "@/lib/near";
 
+// The mono typeface as the page has it (read once; next/font gives it a generated name).
+let FACE = "";
+
 // Where each city on the list is on the unit sphere, worked out once, so a frame can tell cheaply which are in view.
 let cityXyz: [number, number, number][] | null = null;
 import { TLink } from "../Transition";
@@ -325,7 +328,8 @@ export default function Globe() {
       s.clusters = clusters;
 
       const pulse = (ms / 1400) % 1;
-      const mono = '500 12px "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace';
+      const face = (FACE ||= getComputedStyle(document.documentElement).getPropertyValue("--mono").trim() || '"JetBrains Mono", ui-monospace, monospace');
+      const mono = `500 12px ${face}`;
       const taken: [number, number, number, number][] = []; // label boxes already drawn, so the next one can avoid them
       const names: typeof s.labels = [];
       const label = (text: string, x: number, y: number, clear: number, at: Cluster) => {
@@ -366,7 +370,7 @@ export default function Globe() {
         g.lineWidth = 1.5;
         g.stroke();
         if (many) {
-          g.font = '600 12px "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace';
+          g.font = `600 12px ${face}`;
           g.fillStyle = "#201a26";
           g.textAlign = "center";
           g.fillText(String(c.pins.length), c.x, c.y + 4);

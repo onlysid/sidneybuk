@@ -1,12 +1,14 @@
 // The service worker: what lets the site be installed as an app and still open without a connection.
 //
 //   Pages          asked from the network first, so they are always current; a copy of each one visited is
-//                  kept and shown if there is no connection. A page never visited gets /offline.html.
+//                  kept and shown if there is no connection, or if the network has not answered within a few
+//                  seconds (a bad connection must never leave a blank screen when a kept copy would do).
+//                  A page never visited gets /offline.html.
 //   Built files    (/_next/static, fonts, icons, sounds) never change once made, so the kept copy is used.
 //   /api, /admin   never kept: they are always live, or nothing.
 //
 // Change VERSION to throw every kept copy away on visitors' devices.
-const VERSION = "v3";
+const VERSION = "v4";
 const PAGES = `pages-${VERSION}`;
 const FILES = `files-${VERSION}`;
 
@@ -30,15 +32,21 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response.ok) {
-            const copy = response.clone();
-            caches.open(PAGES).then((cache) => cache.put(request, copy));
-          }
+      (async () => {
+        const kept = await caches.match(request);
+        // With a kept copy to fall back on, the network gets a few seconds; without one it gets as long as it needs.
+        const live = fetch(request).then((response) => {
+          if (response.ok) caches.open(PAGES).then((cache) => cache.put(request, response.clone()));
           return response;
-        })
-        .catch(() => caches.match(request).then((kept) => kept || caches.match("/offline.html"))),
+        });
+        const slow = new Promise((resolve) => setTimeout(() => resolve(null), kept ? 3500 : 60000));
+        try {
+          const answer = await Promise.race([live, slow]);
+          if (answer) return answer;
+        } catch {}
+        // Nothing (or nothing yet) from the network: the kept copy, kept fresh by the fetch still running.
+        return kept || (await live.catch(() => null)) || caches.match("/offline.html");
+      })(),
     );
     return;
   }

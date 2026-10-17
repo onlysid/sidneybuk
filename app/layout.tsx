@@ -1,12 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource-variable/bricolage-grotesque";
-import "@fontsource-variable/instrument-sans";
-import "@fontsource-variable/jetbrains-mono";
+import localFont from "next/font/local";
 import "./globals.css";
 import { ContentProvider } from "@/components/Content";
 import { Shell } from "@/components/Shell";
 import { getContent } from "@/lib/server/store";
 import { site } from "@/lib/site";
+
+// The three typefaces, served from here and announced in the page's head so the browser fetches them with
+// the page rather than after the stylesheet; each gets a matched fallback so text barely shifts when it lands.
+const display = localFont({ src: "./fonts/bricolage.woff2", variable: "--font-display", display: "swap", adjustFontFallback: "Arial" });
+const body = localFont({ src: "./fonts/instrument.woff2", variable: "--font-body", display: "swap", adjustFontFallback: "Arial" });
+const mono = localFont({ src: "./fonts/jetbrains.woff2", variable: "--font-mono", display: "swap", adjustFontFallback: "Times New Roman" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
@@ -36,7 +40,7 @@ export const dynamic = "force-dynamic";
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const content = await getContent();
   return (
-    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
