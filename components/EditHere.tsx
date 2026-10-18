@@ -35,6 +35,8 @@ function waysFor(pathname: string): Way[] {
       return one("Training", "/admin/activities");
     case "changelog":
       return one("Changelog", "/admin/change");
+    case "cv":
+      return one("Edit the CV", "/admin/cv");
     case "contact":
     case "privacy":
       return one("Settings", "/admin/settings");

@@ -10,7 +10,7 @@ export const site = {
     "I'm a software engineer with an enthusiasm for mathematics and problem solving. I am currently working on this website/portfolio so feel free to watch this space!",
   email: "hello@sidneyb.uk",
   // Still served from the old domain. Copy the PDF into /public/files and point this at "/files/…" when you migrate.
-  resumeUrl: "https://www.onlysid.com/files/sidney-brown-cv-dark.pdf",
+  resumeUrl: "/cv",
   // From my CV. Shown on the Maths and physics page.
   degree: { title: "BSc Mathematics and Physics", place: "University College London", year: "2020" },
 } as const;

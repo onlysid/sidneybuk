@@ -317,7 +317,7 @@ export function PlacePicker({ lat, lon, named = "", onPick }: { lat: number; lon
           autoComplete="off"
           enterKeyHint="search"
         />
-        <button type="button" className="ad-btn" onClick={look} disabled={state === "looking" || q.trim().length < 2}>
+        <button type="button" className="desk-btn" onClick={look} disabled={state === "looking" || q.trim().length < 2}>
           {state === "looking" ? "Looking…" : "Find more"}
         </button>
       </div>
@@ -328,12 +328,12 @@ export function PlacePicker({ lat, lon, named = "", onPick }: { lat: number; lon
         </svg>
         {here === "asking" ? "Finding you…" : "Use where I am now"}
       </button>
-      {here === "refused" && <p className="ad-help">This browser has not been allowed to know where it is. Allow location for this site in its settings, or find the town by name.</p>}
-      {here === "none" && <p className="ad-help">Where this device is could not be worked out just now. Find the town by name, or tap the map.</p>}
-      {state === "failed" && <p className="ad-help">Nothing on the built-in list by that name, and the finder for smaller places could not be reached. Drag the map and tap where it is instead.</p>}
+      {here === "refused" && <p className="desk-help">This browser has not been allowed to know where it is. Allow location for this site in its settings, or find the town by name.</p>}
+      {here === "none" && <p className="desk-help">Where this device is could not be worked out just now. Find the town by name, or tap the map.</p>}
+      {state === "failed" && <p className="desk-help">Nothing on the built-in list by that name, and the finder for smaller places could not be reached. Drag the map and tap where it is instead.</p>}
       {(offered.length > 0 || found) && q.trim().length >= 2 && (
         <ul className="pp-found">
-          {offered.length === 0 && <li className="ad-help">Nothing found by that name.</li>}
+          {offered.length === 0 && <li className="desk-help">Nothing found by that name.</li>}
           {offered.map((f) => (
             <li key={f.id}>
               <button type="button" onClick={() => choose(f)}>

@@ -23,9 +23,11 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   // Builds a self-contained server in .next/standalone, which is what the Docker image runs.
   output: "standalone",
-  serverExternalPackages: ["pg"],
+  serverExternalPackages: ["pg", "@react-pdf/renderer"],
   // This folder is the whole project, whatever else happens to sit in the folders above it.
   outputFileTracingRoot: __dirname,
+  // The CV's PDF reads its typefaces from disk at run time; make sure the Docker image carries them.
+  outputFileTracingIncludes: { "/cv/pdf": ["./lib/cv/fonts/**"] },
   turbopack: { root: __dirname },
   // Lets a page say forbidden(), which shows app/forbidden.tsx.
   experimental: { authInterrupts: true },

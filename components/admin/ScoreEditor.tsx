@@ -408,8 +408,8 @@ export function ScoreEditor({ id, onSaved, say }: { id: string; onSaved: (href: 
     const home = -700 / (keysWide + 14);
     el.animate([{ transform: `translateX(${home + (by * 700) / (keysWide + 14)}%)` }, { transform: `translateX(${home}%)` }], { duration: 560, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
   }, [octave, hand, keysWide]);
-  if (missing) return <p className="ad-help">That piece is not there.</p>;
-  if (!piece) return <p className="ad-help">Loading…</p>;
+  if (missing) return <p className="desk-help">That piece is not there.</p>;
+  if (!piece) return <p className="desk-help">Loading…</p>;
   const length = barLength(draft);
   const low = octave[hand] * 12 + 12; // the MIDI number of the piano's lowest C
   // From that C up, until enough white keys have been laid out.
@@ -464,7 +464,7 @@ export function ScoreEditor({ id, onSaved, say }: { id: string; onSaved: (href: 
         </div>
         <div className="sheet-foot">
           <span />
-          <button type="button" className="ad-btn ad-main" onClick={() => setSetup(false)}>
+          <button type="button" className="desk-btn desk-main" onClick={() => setSetup(false)}>
             Done
           </button>
         </div>
@@ -623,20 +623,20 @@ export function ScoreEditor({ id, onSaved, say }: { id: string; onSaved: (href: 
         </details>
       </div>
 
-      {replacing && <p className="ad-help">This piece already has a score file that was uploaded. Putting this one on the site takes its place (the old file stays in the media library).</p>}
-      <div className="ad-bar glass sc-foot">
-        <span className="ad-bar-state mono" data-dirty={!empty && !onSite}>
+      {replacing && <p className="desk-help">This piece already has a score file that was uploaded. Putting this one on the site takes its place (the old file stays in the media library).</p>}
+      <div className="desk-bar glass sc-foot">
+        <span className="desk-bar-state mono" data-dirty={!empty && !onSite}>
           {empty ? "Empty" : onSite ? "Live" : piece.data.scoreLive ? "Changed" : "Not live"}
         </span>
-        <button type="button" className="ad-btn" onClick={play} disabled={empty}>
+        <button type="button" className="desk-btn" onClick={play} disabled={empty}>
           {playing ? "Stop" : "Play"}
         </button>
         {onSite ? (
-          <button type="button" className="ad-btn ad-quiet" onClick={() => onSaved(`/music/pieces/${piece.slug}`)}>
+          <button type="button" className="desk-btn desk-quiet" onClick={() => onSaved(`/music/pieces/${piece.slug}`)}>
             View it
           </button>
         ) : (
-          <button type="button" className="ad-btn ad-main" onClick={publish} disabled={busy || empty}>
+          <button type="button" className="desk-btn desk-main" onClick={publish} disabled={busy || empty}>
             {busy ? "Putting it up…" : "Put on the site"}
           </button>
         )}

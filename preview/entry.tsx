@@ -15,6 +15,8 @@ import { HomeView } from "@/views/HomeView";
 import { ChangelogView } from "@/views/ChangelogView";
 import { PrivacyView } from "@/views/PrivacyView";
 import { Lost } from "@/components/Lost";
+import { CvView } from "@/views/CvView";
+import { seedCv } from "@/lib/cv";
 import { WorkView } from "@/views/WorkView";
 import { workBySlug } from "@/lib/portfolio";
 import { MusicFunView, PieceView, DoseView } from "@/views/MusicViews";
@@ -90,7 +92,7 @@ function App({ content }: { content: typeof seed }) {
   if (learn.length === 3 && content.topics.find((t) => t.subject === learn[1] && t.slug === learn[2])) return <Shell><TopicView key={slug} topic={content.topics.find((t) => t.subject === learn[1] && t.slug === learn[2])!} /></Shell>;
   if (learn.length === 3 && noteBySlug(learn[1], learn[2])) return <Shell><NoteView key={slug} note={noteBySlug(learn[1], learn[2])!} /></Shell>;
   if (learn.length === 2 && subjectBySlug(learn[1])) return <Shell><SubjectView key={slug} subject={subjectBySlug(learn[1])!} /></Shell>;
-  return <Shell>{slug === "film/fun" ? <FilmFunView /> : slug.startsWith("film/projects/") && projectBySlug(slug.slice(14)) ? <ProjectView key={slug} project={projectBySlug(slug.slice(14))!} /> : slug === "music/fun" ? <MusicFunView /> : slug.startsWith("music/pieces/") && pieceBySlug(slug.slice(13)) ? <PieceView key={slug} piece={pieceBySlug(slug.slice(13))!} /> : slug.startsWith("music/doses/") && doseBySlug(slug.slice(12)) ? <DoseView key={slug} dose={doseBySlug(slug.slice(12))!} /> : bySlug(slug) ? <DisciplineView key={slug} slug={slug as Slug} /> : slug.startsWith("work/") && workBySlug(slug.slice(5)) ? <WorkView key={slug} piece={workBySlug(slug.slice(5))!} /> : slug === "blog" ? <BlogView /> : slug.startsWith("blog/") && postBySlug(slug.slice(5)) ? <PostView key={slug} post={postBySlug(slug.slice(5))!} /> : slug === "contact" ? <ContactView /> : slug === "privacy" ? <PrivacyView /> : slug === "" ? <HomeView /> : slug === "locked" ? <Lost code={403} /> : slug === "broken" ? <Lost code={500} error="TypeError: the example page tripped over its own feet" reset={() => location.reload()} /> : <Lost code={404} />}</Shell>;
+  return <Shell>{slug === "film/fun" ? <FilmFunView /> : slug.startsWith("film/projects/") && projectBySlug(slug.slice(14)) ? <ProjectView key={slug} project={projectBySlug(slug.slice(14))!} /> : slug === "music/fun" ? <MusicFunView /> : slug.startsWith("music/pieces/") && pieceBySlug(slug.slice(13)) ? <PieceView key={slug} piece={pieceBySlug(slug.slice(13))!} /> : slug.startsWith("music/doses/") && doseBySlug(slug.slice(12)) ? <DoseView key={slug} dose={doseBySlug(slug.slice(12))!} /> : bySlug(slug) ? <DisciplineView key={slug} slug={slug as Slug} /> : slug.startsWith("work/") && workBySlug(slug.slice(5)) ? <WorkView key={slug} piece={workBySlug(slug.slice(5))!} /> : slug === "blog" ? <BlogView /> : slug.startsWith("blog/") && postBySlug(slug.slice(5)) ? <PostView key={slug} post={postBySlug(slug.slice(5))!} /> : slug === "contact" ? <ContactView /> : slug === "privacy" ? <PrivacyView /> : slug === "" ? <HomeView /> : slug === "cv" ? <CvView cv={seedCv} /> : slug === "locked" ? <Lost code={403} /> : slug === "broken" ? <Lost code={500} error="TypeError: the example page tripped over its own feet" reset={() => location.reload()} /> : <Lost code={404} />}</Shell>;
 }
 
 // The preview has no server, so "Now listening" is answered here with an entry that says it is a sample.

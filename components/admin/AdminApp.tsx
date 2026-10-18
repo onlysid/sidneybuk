@@ -8,6 +8,7 @@ import { mutate } from "swr";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, type AdminActivity, type KeyGroup, type Media, type AppleMusicStatus, type Passkeys, type StravaStatus } from "@/lib/admin/api";
+import { stamp as cvStamp, type Cv, type CvJob } from "@/lib/cv";
 import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import { KIND_NAMES, markOf, PADEL_KINDS, padelResult, RIDE_KINDS, scoreOf, writtenUp, type ActivityLog } from "@/lib/training";
 import { counted, lastOf, logged, numberOf, say as sayLift, today, unlogged, type Lift } from "@/lib/gym";
@@ -144,31 +145,31 @@ function FileField({ id, value, accept, onChange }: { id: string; value: string;
   };
   const short = value.startsWith("data:") ? "Uploaded in this preview" : value;
   return (
-    <div className="ad-file">
-      {value && isImage(value) && <img key={value} className="ad-thumb ad-swap" src={value} alt="" />}
-      <Grow className="ad-file-main">
-        {value.startsWith("data:") ? <input id={id} value={short} readOnly /> : <input id={id} key={value.startsWith("/") ? value : "typed"} className="ad-swap" value={value} placeholder="Upload a file, or paste an address" onChange={(e) => onChange(e.target.value || undefined)} />}
+    <div className="desk-file">
+      {value && isImage(value) && <img key={value} className="desk-thumb desk-swap" src={value} alt="" />}
+      <Grow className="desk-file-main">
+        {value.startsWith("data:") ? <input id={id} value={short} readOnly /> : <input id={id} key={value.startsWith("/") ? value : "typed"} className="desk-swap" value={value} placeholder="Upload a file, or paste an address" onChange={(e) => onChange(e.target.value || undefined)} />}
         {value && isAudio(value) && <audio controls preload="none" src={value} />}
-        <div className="ad-row">
-          <button type="button" className="ad-btn" disabled={busy} onClick={() => input.current?.click()}>
+        <div className="desk-row">
+          <button type="button" className="desk-btn" disabled={busy} onClick={() => input.current?.click()}>
             {busy ? "Uploading…" : value ? "Replace" : "Upload"}
           </button>
-          <button type="button" className="ad-btn" onClick={async () => setLibrary(library ? null : (await api.media().catch(() => [])).filter((m) => fits(m, accept)))}>
+          <button type="button" className="desk-btn" onClick={async () => setLibrary(library ? null : (await api.media().catch(() => [])).filter((m) => fits(m, accept)))}>
             {library ? "Close library" : "Choose from library"}
           </button>
           {value && (
-            <button type="button" className="ad-btn ad-quiet" onClick={() => onChange(undefined)}>
+            <button type="button" className="desk-btn desk-quiet" onClick={() => onChange(undefined)}>
               Remove
             </button>
           )}
         </div>
         <input ref={input} type="file" hidden accept={ACCEPT[accept] || undefined} onChange={(e) => (send(e.target.files?.[0]), (e.target.value = ""))} />
         {library && (
-          <div className="ad-pick ad-swap">
-            {library.length === 0 && <p className="ad-help">Nothing of this kind has been uploaded yet.</p>}
+          <div className="desk-pick desk-swap">
+            {library.length === 0 && <p className="desk-help">Nothing of this kind has been uploaded yet.</p>}
             {library.map((m) => (
-              <button type="button" key={m.id} className="ad-pick-item" title={m.name} onClick={() => (onChange(m.url), setLibrary(null))}>
-                {m.mime.startsWith("image/") ? <img src={m.url} alt="" loading="lazy" /> : <span className="ad-pick-file">{m.name.split(".").pop()}</span>}
+              <button type="button" key={m.id} className="desk-pick-item" title={m.name} onClick={() => (onChange(m.url), setLibrary(null))}>
+                {m.mime.startsWith("image/") ? <img src={m.url} alt="" loading="lazy" /> : <span className="desk-pick-file">{m.name.split(".").pop()}</span>}
                 <span>{m.name}</span>
               </button>
             ))}
@@ -204,7 +205,7 @@ function FieldBox({ field, value, onChange, path }: { field: Field; value: unkno
       break;
     case "select":
       control = (
-        <span className="ad-pick">
+        <span className="desk-pick">
           <Pick label={field.label} value={text} options={field.options.map((o) => [o, o || "As it comes"] as const)} onChange={(v) => onChange(v || undefined)} />
         </span>
       );
@@ -225,10 +226,10 @@ function FieldBox({ field, value, onChange, path }: { field: Field; value: unkno
       control = <Shaped id={id} shape={field.type as keyof typeof SHAPES} value={value} onChange={onChange} placeholder={"placeholder" in field ? field.placeholder : undefined} rows={field.type === "blocks" ? 14 : field.type === "verses" ? 10 : 6} />;
   }
   return (
-    <div className="ad-field" data-wide={field.wide || field.type === "list" || field.type === "file" || field.type === "markdown" ? "true" : undefined}>
+    <div className="desk-field" data-wide={field.wide || field.type === "list" || field.type === "file" || field.type === "markdown" ? "true" : undefined}>
       <label htmlFor={field.type === "list" ? undefined : id}>{field.label}</label>
       {control}
-      {field.help && <p className="ad-help">{field.help}</p>}
+      {field.help && <p className="desk-help">{field.help}</p>}
     </div>
   );
 }
@@ -236,7 +237,7 @@ function FieldBox({ field, value, onChange, path }: { field: Field; value: unkno
 function Fields({ fields, data, onChange, path }: { fields: Field[]; data: Data; onChange: (d: Data) => void; path: string }) {
   return (
     <Scope.Provider value={data}>
-      <div className="ad-fields">
+      <div className="desk-fields">
         {fields.map((f) => (
           <FieldBox key={f.key} field={f} path={`${path}-${f.key}`} value={read(data, f.key)} onChange={(v) => onChange(write(data, f.key, v))} />
         ))}
@@ -267,7 +268,7 @@ function RefField({ id, field, value, onChange }: { id: string; field: Extract<F
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stale]);
   return (
-    <span className="ad-pick" id={id}>
+    <span className="desk-pick" id={id}>
       <Pick
         label={field.label}
         value={options.some((e) => e.slug === value) ? value : ""}
@@ -328,28 +329,28 @@ function MarkdownField({ id, value, rows, onChange }: { id: string; value: strin
     setBusy(false);
   };
   return (
-    <div className="ad-md">
-      <div className="ad-md-bar">
+    <div className="desk-md">
+      <div className="desk-md-bar">
         {SNIPPETS.map((sn) => (
-          <button key={sn.label} type="button" className="ad-md-btn" title={sn.tip} disabled={look} onClick={() => (sn.wrap ? insert(sn.wrap[0], sn.wrap[1]) : insert(sn.block ?? "", "", true))}>
+          <button key={sn.label} type="button" className="desk-md-btn" title={sn.tip} disabled={look} onClick={() => (sn.wrap ? insert(sn.wrap[0], sn.wrap[1]) : insert(sn.block ?? "", "", true))}>
             {sn.label}
           </button>
         ))}
-        <button type="button" className="ad-md-btn" title="A picture, a recording, a video, or a score (MusicXML) that plays" disabled={look || busy} onClick={() => pick.current?.click()}>
+        <button type="button" className="desk-md-btn" title="A picture, a recording, a video, or a score (MusicXML) that plays" disabled={look || busy} onClick={() => pick.current?.click()}>
           {busy ? "Uploading…" : "Upload"}
         </button>
         <input ref={pick} type="file" hidden multiple onChange={(e) => (upload([...(e.target.files ?? [])]), (e.target.value = ""))} />
-        <span className="ad-bar-gap" />
-        <button type="button" className="ad-md-btn ad-md-look" aria-pressed={look} onClick={() => setLook(!look)}>
+        <span className="desk-bar-gap" />
+        <button type="button" className="desk-md-btn desk-md-look" aria-pressed={look} onClick={() => setLook(!look)}>
           {look ? "Back to writing" : "Preview"}
         </button>
       </div>
       {look ? (
-        <div className="ad-md-preview">{value.trim() ? <Markdown source={value} /> : <p className="ad-help">Nothing written yet.</p>}</div>
+        <div className="desk-md-preview">{value.trim() ? <Markdown source={value} /> : <p className="desk-help">Nothing written yet.</p>}</div>
       ) : (
         <textarea id={id} ref={area} value={value} rows={rows} spellCheck onChange={(e) => onChange(e.target.value)} placeholder="Write here. A blank line starts a new paragraph." />
       )}
-      <details className="ad-help ad-md-help">
+      <details className="desk-help desk-md-help">
         <summary>What can go in a note</summary>
         <ul>
           <li><code>## Heading</code>, <code>**bold**</code>, <code>*italic*</code>, <code>- a list</code>, <code>1. a numbered list</code>, <code>[a link](https://…)</code>, tables.</li>
@@ -382,23 +383,23 @@ function ListField({ field, value, onChange, path }: { field: Extract<Field, { t
     onChange(next);
   };
   return (
-    <div className="ad-list" ref={flip}>
+    <div className="desk-list" ref={flip}>
       {value.map((item, at) => {
         const key = keys.current[at];
         const name = String(item[field.titleKey] ?? "") || `${field.one[0].toUpperCase()}${field.one.slice(1)} ${at + 1}`;
         const thumb = typeof item.src === "string" && isImage(item.src) ? item.src : "";
         return (
-          <div className="ad-item" key={key} data-open={open === key}>
-            <div className="ad-item-head">
-              <button type="button" className="ad-item-name" aria-expanded={open === key} onClick={() => setOpen(open === key ? null : key)}>
+          <div className="desk-item" key={key} data-open={open === key}>
+            <div className="desk-item-head">
+              <button type="button" className="desk-item-name" aria-expanded={open === key} onClick={() => setOpen(open === key ? null : key)}>
                 {thumb && <img src={thumb} alt="" />}
                 <span>{name}</span>
               </button>
-              <button type="button" className="ad-icon" aria-label="Move up" disabled={at === 0} onClick={() => move(at, at - 1)}>↑</button>
-              <button type="button" className="ad-icon" aria-label="Move down" disabled={at === value.length - 1} onClick={() => move(at, at + 1)}>↓</button>
+              <button type="button" className="desk-icon" aria-label="Move up" disabled={at === 0} onClick={() => move(at, at - 1)}>↑</button>
+              <button type="button" className="desk-icon" aria-label="Move down" disabled={at === value.length - 1} onClick={() => move(at, at + 1)}>↓</button>
               <button
                 type="button"
-                className="ad-icon"
+                className="desk-icon"
                 aria-label={`Remove this ${field.one}`}
                 onClick={() => {
                   // Nothing is lost until Save is pressed, so this needs no "are you sure".
@@ -425,7 +426,7 @@ function ListField({ field, value, onChange, path }: { field: Extract<Field, { t
                 >
                   Remove
                 </button>
-                <button type="button" className="ad-btn ad-main" onClick={() => setOpen(null)}>
+                <button type="button" className="desk-btn desk-main" onClick={() => setOpen(null)}>
                   Done
                 </button>
               </div>
@@ -435,7 +436,7 @@ function ListField({ field, value, onChange, path }: { field: Extract<Field, { t
       })}
       <button
         type="button"
-        className="ad-btn"
+        className="desk-btn"
         onClick={() => {
           keys.current.push(count.current++);
           setOpen(keys.current[keys.current.length - 1]);
@@ -451,7 +452,7 @@ function ListField({ field, value, onChange, path }: { field: Extract<Field, { t
 // ---- Screens --------------------------------------------------------------------------------------------
 function Head({ trail, title, children }: { trail: [string, string][]; title: string; children?: React.ReactNode }) {
   return (
-    <header className="ad-head">
+    <header className="desk-head">
       <p className="mono">
         {trail.map(([label, href]) => (
           <span key={href}>
@@ -460,8 +461,8 @@ function Head({ trail, title, children }: { trail: [string, string][]; title: st
         ))}
         {title}
       </p>
-      <div className="ad-head-row">
-        <h1 className="ad-title">{title}</h1>
+      <div className="desk-head-row">
+        <h1 className="desk-title">{title}</h1>
         {children}
       </div>
     </header>
@@ -489,6 +490,7 @@ function Dashboard() {
     ["/admin/activities", "Training", "Write up a run, ride, gym or padel"],
     ["/admin/gym", "Gym today", "Tap the machines as you go"],
     ["/admin/cards", "Cards", "Add and group flashcards"],
+    ["/admin/cv", "CV", "The page at /cv and its PDFs"],
   ];
   const row = (e: Entry) => (
     <Go key={e.id} href={`/admin/${e.kind}/${e.id}`} className="dash-row">
@@ -502,7 +504,7 @@ function Dashboard() {
   return (
     <>
       <Head trail={[]} title="Admin" />
-      <input className="ad-find dash-find" type="search" placeholder="Find anything by name" value={find} onChange={(e) => setFind(e.target.value)} aria-label="Find anything" />
+      <input className="desk-find dash-find" type="search" placeholder="Find anything by name" value={find} onChange={(e) => setFind(e.target.value)} aria-label="Find anything" />
       {words.length > 0 ? (
         <section className="dash-block">
           <h2 className="mono">{found.length ? "Found" : "Nothing called that"}</h2>
@@ -627,40 +629,40 @@ function ListScreen({ form }: { form: KindForm }) {
   return (
     <>
       <Head trail={[["Admin", "/admin"]]} title={form.many}>
-        <Go href={`/admin/${form.kind}/new`} className="ad-btn ad-main">
+        <Go href={`/admin/${form.kind}/new`} className="desk-btn desk-main">
           New {form.one}
         </Go>
       </Head>
-      {(entries?.length ?? 0) > 6 && <input className="ad-find" type="search" placeholder={`Search ${form.many.toLowerCase()}`} value={find} onChange={(e) => setFind(e.target.value)} />}
+      {(entries?.length ?? 0) > 6 && <input className="desk-find" type="search" placeholder={`Search ${form.many.toLowerCase()}`} value={find} onChange={(e) => setFind(e.target.value)} />}
       {samples.length > 0 && !find && (
-        <div className="ad-offer glass">
+        <div className="desk-offer glass">
           <div>
             <b>{samples.length} of these {samples.length === 1 ? "is an example" : "are examples"} the site came with</b>
             <p>They are marked "sample" on the site. Edit them into your own, delete them one at a time, or clear them all here. Deleted ones do not come back.</p>
           </div>
-          <button type="button" className="ad-btn ad-danger" disabled={busy} onClick={clearSamples}>
+          <button type="button" className="desk-btn desk-danger" disabled={busy} onClick={clearSamples}>
             Delete the examples
           </button>
         </div>
       )}
-      {!entries && <p className="ad-help">Loading…</p>}
-      {entries && entries.length === 0 && <p className="ad-help">Nothing here yet.</p>}
-      {!byDate && (entries?.length ?? 0) > 1 && !find && <p className="ad-help">These appear on the site in this order. Use the arrows to change it.</p>}
-      <ul className="ad-entries" ref={flip}>
+      {!entries && <p className="desk-help">Loading…</p>}
+      {entries && entries.length === 0 && <p className="desk-help">Nothing here yet.</p>}
+      {!byDate && (entries?.length ?? 0) > 1 && !find && <p className="desk-help">These appear on the site in this order. Use the arrows to change it.</p>}
+      <ul className="desk-entries" ref={flip}>
         {shown.map((e) => {
           const at = entries!.indexOf(e);
           return (
-            <li key={e.id} className="ad-entry glass" data-hidden={!e.published}>
-              <Go href={`/admin/${form.kind}/${e.id}`} className="ad-entry-main">
+            <li key={e.id} className="desk-entry glass" data-hidden={!e.published}>
+              <Go href={`/admin/${form.kind}/${e.id}`} className="desk-entry-main">
                 <strong>{e.title || "Untitled"}</strong>
                 <span>{form.summary(e.data)}</span>
               </Go>
-              {!e.published && <span className="ad-tag">Hidden</span>}
-              {!!e.data.sample && <span className="ad-tag">Sample</span>}
+              {!e.published && <span className="desk-tag">Hidden</span>}
+              {!!e.data.sample && <span className="desk-tag">Sample</span>}
               {!byDate && !find && (
                 <>
-                  <button type="button" className="ad-icon" aria-label="Move up" disabled={at === 0 || busy} onClick={() => move(at, at - 1)}>↑</button>
-                  <button type="button" className="ad-icon" aria-label="Move down" disabled={at === entries!.length - 1 || busy} onClick={() => move(at, at + 1)}>↓</button>
+                  <button type="button" className="desk-icon" aria-label="Move up" disabled={at === 0 || busy} onClick={() => move(at, at - 1)}>↑</button>
+                  <button type="button" className="desk-icon" aria-label="Move down" disabled={at === entries!.length - 1 || busy} onClick={() => move(at, at + 1)}>↓</button>
                 </>
               )}
             </li>
@@ -755,7 +757,7 @@ function Editor({ form, id }: { form: KindForm; id: string }) {
   }, [save]);
 
   if (missing) return <Head trail={[["Admin", "/admin"], [form.many, `/admin/${form.kind}`]]} title="Not found" />;
-  if (!data) return <p className="ad-help">Loading…</p>;
+  if (!data) return <p className="desk-help">Loading…</p>;
   const link = form.url(entry?.slug ?? address, data);
   // A place's position is chosen on a map (below), so the two number boxes for it are left out.
   const mapped = form.kind === "place" || form.kind === "wish";
@@ -767,7 +769,7 @@ function Editor({ form, id }: { form: KindForm; id: string }) {
   };
   return (
     <form
-      className="ad-editor"
+      className="desk-editor"
       onSubmit={(e) => {
         e.preventDefault();
         save();
@@ -775,16 +777,16 @@ function Editor({ form, id }: { form: KindForm; id: string }) {
     >
       <Head trail={[["Admin", "/admin"], [form.many, `/admin/${form.kind}`]]} title={fresh ? `New ${form.one}` : title || "Untitled"} />
       {mapped && (
-        <section className="ad-panel glass">
-          <h2 className="ad-h2">Where it is</h2>
+        <section className="desk-panel glass">
+          <h2 className="desk-h2">Where it is</h2>
           <PlacePicker lat={Number(data.lat) || 0} lon={Number(data.lon) || 0} named={String(data.name ?? "")} onPick={(p) => change({ ...data, lat: p.lat, lon: p.lon, ...(p.name ? { name: p.name } : {}), ...(p.country ? { country: p.country } : {}) })} />
         </section>
       )}
-      <section className="ad-panel glass">
+      <section className="desk-panel glass">
         <Fields key={entry?.id ?? "new"} fields={first} data={data} path={form.kind} onChange={change} />
       </section>
-      <section className="ad-panel ad-more glass">
-        <button type="button" className="ad-more-btn" aria-haspopup="dialog" onClick={() => setMore(true)}>
+      <section className="desk-panel desk-more glass">
+        <button type="button" className="desk-more-btn" aria-haspopup="dialog" onClick={() => setMore(true)}>
           <span>
             <b>More</b>
             <small>{[...rest.map((f) => f.label), "Address", ...(entry ? ["Delete"] : [])].join(" · ")}</small>
@@ -795,11 +797,11 @@ function Editor({ form, id }: { form: KindForm; id: string }) {
         </button>
         <Sheet open={more} onClose={() => setMore(false)} title="More">
             {rest.length > 0 && <Fields key={entry?.id ?? "new"} fields={rest} data={data} path={form.kind} onChange={change} />}
-            <div className="ad-fields">
-              <div className="ad-field" data-wide="true">
-                <label htmlFor="ad-slug">Address</label>
+            <div className="desk-fields">
+              <div className="desk-field" data-wide="true">
+                <label htmlFor="desk-slug">Address</label>
                 <input
-                  id="ad-slug"
+                  id="desk-slug"
                   value={address}
                   onChange={(e) => {
                     setOwnSlug(true);
@@ -807,7 +809,7 @@ function Editor({ form, id }: { form: KindForm; id: string }) {
                     setDirty(true);
                   }}
                 />
-                <p className="ad-help">
+                <p className="desk-help">
                   {site.domain}
                   {form.url(address || "…", data)}. It is made from the title. Changing it later breaks links people have already shared.
                 </p>
@@ -837,26 +839,26 @@ function Editor({ form, id }: { form: KindForm; id: string }) {
             ) : (
               <span />
             )}
-              <button type="button" className="ad-btn ad-main" onClick={() => setMore(false)}>
+              <button type="button" className="desk-btn desk-main" onClick={() => setMore(false)}>
                 Done
               </button>
             </div>
         </Sheet>
       </section>
       {form.kind === "piece" && (
-        <div className="ad-offer glass">
+        <div className="desk-offer glass">
           <div>
             <b>Write the score here</b>
             <p>No notation program needed: tap notes in on a piano, see the page as it will look, and the site makes the MusicXML file itself. It saves as you go, so you can stop and come back.{isDraft(data?.scoreDraft) ? (data?.scoreLive ? " This piece has a score written here." : " There is a draft here that is not on the site yet.") : ""}</p>
           </div>
           {entry && !dirty ? (
-            <Go href={`/admin/score/${entry.id}`} className="ad-btn">
+            <Go href={`/admin/score/${entry.id}`} className="desk-btn">
               {isDraft(data?.scoreDraft) ? "Carry on with the score" : "Write the score"}
             </Go>
           ) : (
             <button
               type="button"
-              className="ad-btn"
+              className="desk-btn"
               disabled={busy}
               onClick={() => {
                 next.current = (saved) => `/admin/score/${saved.id}`;
@@ -869,18 +871,18 @@ function Editor({ form, id }: { form: KindForm; id: string }) {
         </div>
       )}
       {form.kind === "topic" && entry && (
-        <div className="ad-offer glass">
+        <div className="desk-offer glass">
           <div>
             <b>This topic&apos;s flashcards</b>
             <p>{Array.isArray(data?.cards) ? data.cards.length : 0} so far. Add, group and move them on their own screen.</p>
           </div>
-          <Go href={`/admin/cards/${entry.slug}`} className="ad-btn">
+          <Go href={`/admin/cards/${entry.slug}`} className="desk-btn">
             Open the cards
           </Go>
         </div>
       )}
-      <div className="ad-bar glass">
-        <label className="ad-live" data-on={published}>
+      <div className="desk-bar glass">
+        <label className="desk-live" data-on={published}>
           <input
             type="checkbox"
             checked={published}
@@ -892,15 +894,15 @@ function Editor({ form, id }: { form: KindForm; id: string }) {
           <i aria-hidden="true" />
           <span>{published ? "On the site" : "Hidden"}</span>
         </label>
-        <span className="ad-bar-state mono" data-dirty={dirty || fresh}>
+        <span className="desk-bar-state mono" data-dirty={dirty || fresh}>
           {busy ? "Saving…" : dirty || fresh ? "Not saved yet" : "Saved"}
         </span>
         {entry && published && !dirty && (
-          <Go href={link} className="ad-btn ad-quiet">
+          <Go href={link} className="desk-btn desk-quiet">
             View it
           </Go>
         )}
-        <button type="submit" className="ad-btn ad-main" disabled={busy || (!dirty && !fresh)}>
+        <button type="submit" className="desk-btn desk-main" disabled={busy || (!dirty && !fresh)}>
           Save
         </button>
       </div>
@@ -974,7 +976,7 @@ function SettingsScreen() {
   useEffect(() => {
     api.settings().then((r) => setSettings(r.settings as unknown as Data), (err) => toast(err.message, true));
   }, [toast]);
-  if (!settings) return <p className="ad-help">Loading…</p>;
+  if (!settings) return <p className="desk-help">Loading…</p>;
   const save = async () => {
     setBusy(true);
     try {
@@ -993,7 +995,7 @@ function SettingsScreen() {
   };
   return (
     <form
-      className="ad-editor"
+      className="desk-editor"
       onSubmit={(e) => {
         e.preventDefault();
         save();
@@ -1001,9 +1003,9 @@ function SettingsScreen() {
     >
       <Head trail={[["Admin", "/admin"]]} title="Settings" />
       {SETTINGS.map((group) => (
-        <section className="ad-panel glass" key={group.title}>
-          <h2 className="ad-h2">{group.title}</h2>
-          {group.about && <p className="ad-help">{group.about}</p>}
+        <section className="desk-panel glass" key={group.title}>
+          <h2 className="desk-h2">{group.title}</h2>
+          {group.about && <p className="desk-help">{group.about}</p>}
           {group.title === "Where I am" && (
             <PlacePicker
               lat={Number((settings.location as Data | null)?.lat) || 0}
@@ -1023,11 +1025,166 @@ function SettingsScreen() {
           />
         </section>
       ))}
-      <div className="ad-bar glass">
-        <span className="ad-bar-state mono" data-dirty={dirty}>
+      <div className="desk-bar glass">
+        <span className="desk-bar-state mono" data-dirty={dirty}>
           {busy ? "Saving…" : dirty ? "Not saved yet" : "Saved"}
         </span>
-        <button type="submit" className="ad-btn ad-main" disabled={busy || !dirty}>
+        <button type="submit" className="desk-btn desk-main" disabled={busy || !dirty}>
+          Save
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// /admin/cv: the CV, which /cv shows and turns into a PDF.
+function CvScreen() {
+  const toast = useContext(Toast);
+  const router = useRouter();
+  const [cv, setCv] = useState<Cv | null>(null);
+  const [dirty, settle] = useChanged(cv, !!cv);
+  const [busy, setBusy] = useState(false);
+  const flip = useFlip<HTMLDivElement>();
+  // A key of its own per job, so moving one slides it rather than redrawing the rest.
+  const keys = useRef(new WeakMap<CvJob, number>());
+  const tally = useRef(0);
+  const keyOf = (j: CvJob) => {
+    let k = keys.current.get(j);
+    if (k === undefined) keys.current.set(j, (k = ++tally.current));
+    return k;
+  };
+  useEffect(() => {
+    api.cv().then(setCv, (err) => toast(err.message, true));
+  }, [toast]);
+  if (!cv) return <Waiting />;
+  const put = (next: Partial<Cv>) => setCv({ ...cv, ...next });
+  const job = (i: number, next: Partial<CvJob>) =>
+    put({
+      jobs: cv.jobs.map((j, k) => {
+        if (k !== i) return j;
+        const fresh = { ...j, ...next };
+        keys.current.set(fresh, keyOf(j));
+        return fresh;
+      }),
+    });
+  const move = (i: number, by: number) => {
+    const jobs = [...cv.jobs];
+    const [one] = jobs.splice(i, 1);
+    jobs.splice(i + by, 0, one);
+    put({ jobs });
+  };
+  const save = async () => {
+    setBusy(true);
+    try {
+      setCv(await api.saveCv(cv));
+      settle();
+      toast("Saved. The PDFs are made afresh from this.");
+      router.refresh();
+    } catch (err) {
+      toast((err as Error).message, true);
+    }
+    setBusy(false);
+  };
+  const text = (label: string, key: "summary" | "skills" | "education" | "interests", rows: number, help: string) => (
+    <div className="desk-field" data-wide="true">
+      <label htmlFor={`cv-${key}`}>{label}</label>
+      <textarea id={`cv-${key}`} rows={rows} value={cv[key]} onChange={(e) => put({ [key]: e.target.value })} />
+      <p className="desk-help">{help}</p>
+    </div>
+  );
+  return (
+    <form
+      className="desk-editor"
+      onSubmit={(e) => {
+        e.preventDefault();
+        save();
+      }}
+    >
+      <Head trail={[["Admin", "/admin"]]} title="CV">
+        <div className="desk-row">
+          <a className="desk-btn desk-quiet" href="/cv" target="_blank" rel="noreferrer">
+            See the page
+          </a>
+          <a className="desk-btn desk-quiet" href="/cv/pdf?theme=light" target="_blank" rel="noreferrer">
+            PDF light
+          </a>
+          <a className="desk-btn desk-quiet" href="/cv/pdf?theme=dark" target="_blank" rel="noreferrer">
+            PDF dark
+          </a>
+        </div>
+      </Head>
+      <p className="desk-lede">
+        What is here becomes the page at /cv and both PDFs the moment it is saved, stamped &ldquo;Last edited {cvStamp(cv.updatedAt)}&rdquo;. Write <code>**like this**</code> for bold. The name and email come from the site itself.
+      </p>
+      <section className="desk-panel glass">
+        <h2 className="desk-h2">Top</h2>
+        <div className="desk-fields">
+          <div className="desk-field">
+            <label htmlFor="cv-phone">Phone</label>
+            <input id="cv-phone" value={cv.phone} onChange={(e) => put({ phone: e.target.value })} />
+          </div>
+          <div className="desk-field">
+            <label htmlFor="cv-linkedin">LinkedIn address</label>
+            <input id="cv-linkedin" value={cv.linkedin} onChange={(e) => put({ linkedin: e.target.value })} placeholder="https://www.linkedin.com/in/…" />
+          </div>
+          {text("Summary", "summary", 4, "A few lines under the name.")}
+          {text("Skills", "skills", 4, "One row per line, the items separated by | (a vertical bar).")}
+        </div>
+      </section>
+      <section className="desk-panel glass">
+        <h2 className="desk-h2">Experience</h2>
+        <div className="desk-fields cv-jobs" ref={flip}>
+          {cv.jobs.map((j, i) => (
+            <div className="desk-field cv-job-edit" data-wide="true" key={keyOf(j)}>
+              <div className="desk-fields">
+                <div className="desk-field">
+                  <label htmlFor={`cv-role-${i}`}>Role</label>
+                  <input id={`cv-role-${i}`} value={j.role} onChange={(e) => job(i, { role: e.target.value })} />
+                </div>
+                <div className="desk-field">
+                  <label htmlFor={`cv-org-${i}`}>Where</label>
+                  <input id={`cv-org-${i}`} value={j.org} onChange={(e) => job(i, { org: e.target.value })} />
+                </div>
+                <div className="desk-field">
+                  <label htmlFor={`cv-when-${i}`}>When</label>
+                  <input id={`cv-when-${i}`} value={j.when} onChange={(e) => job(i, { when: e.target.value })} placeholder="04/2023 – present" />
+                </div>
+                <div className="desk-field" data-wide="true">
+                  <label htmlFor={`cv-bullets-${i}`}>What I did</label>
+                  <textarea id={`cv-bullets-${i}`} rows={Math.min(18, Math.max(4, j.bullets.split("\n").length + 1))} value={j.bullets} onChange={(e) => job(i, { bullets: e.target.value })} />
+                  <p className="desk-help">A line starting &ldquo;- &rdquo; is a bullet; indent it two spaces (&ldquo;  - &rdquo;) to put it inside the one above.</p>
+                </div>
+              </div>
+              <div className="desk-row">
+                <button type="button" className="desk-btn desk-quiet" disabled={i === 0} onClick={() => move(i, -1)}>
+                  Up
+                </button>
+                <button type="button" className="desk-btn desk-quiet" disabled={i === cv.jobs.length - 1} onClick={() => move(i, 1)}>
+                  Down
+                </button>
+                <button type="button" className="desk-btn desk-quiet desk-danger" onClick={async () => (await confirmBox(`Remove "${j.role || "this job"}"?`, { yes: "Remove" })) && put({ jobs: cv.jobs.filter((_, k) => k !== i) })}>
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button type="button" className="desk-btn desk-quiet" onClick={() => put({ jobs: [...cv.jobs, { role: "", org: "", when: "", bullets: "- " }] })}>
+          Add a job
+        </button>
+      </section>
+      <section className="desk-panel glass">
+        <h2 className="desk-h2">Education and interests</h2>
+        <div className="desk-fields">
+          {text("Education", "education", 4, "One line each.")}
+          {text("Interests", "interests", 3, "One row per line, the items separated by |.")}
+        </div>
+      </section>
+      <div className="desk-bar glass">
+        <span className="desk-bar-state mono" data-dirty={dirty}>
+          {busy ? "Saving…" : dirty ? "Not saved yet" : "Saved"}
+        </span>
+        <button type="submit" className="desk-btn desk-main" disabled={busy || !dirty}>
           Save
         </button>
       </div>
@@ -1042,7 +1199,7 @@ function ScoreScreen({ id }: { id: string }) {
   return (
     <>
       <Head trail={[["Admin", "/admin"], ["Pieces", "/admin/piece"], ["The piece", `/admin/piece/${id}`]]} title="Write the score" />
-      <p className="ad-lede">Pick a length, then tap the note. Bar lines, ties and beams look after themselves, and what you see is what the piece&apos;s page will show and play.</p>
+      <p className="desk-lede">Pick a length, then tap the note. Bar lines, ties and beams look after themselves, and what you see is what the piece&apos;s page will show and play.</p>
       <ScoreEditor id={id} say={toast} onSaved={go} />
     </>
   );
@@ -1064,7 +1221,7 @@ function Find({ kinds, slug }: { kinds: string[]; slug: string }) {
     })();
     return () => void (live = false);
   }, [kinds, slug, router]);
-  return missing ? <Head trail={[["Admin", "/admin"]]} title="That page is not in the admin area" /> : <p className="ad-help">Finding it…</p>;
+  return missing ? <Head trail={[["Admin", "/admin"]]} title="That page is not in the admin area" /> : <p className="desk-help">Finding it…</p>;
 }
 
 // "Is there anything to save?" answered by comparing what is on screen with what was last saved, not by remembering that something was touched:…
@@ -1102,32 +1259,32 @@ function Connections() {
   return (
     <>
       <Head trail={[["Admin", "/admin"]]} title="Connections" />
-      <p className="ad-lede">Keys for the other services the site talks to. They are stored encrypted, and once saved they are never shown again, here or anywhere: you can only replace or clear them.</p>
-      {!groups && <p className="ad-help">Loading…</p>}
+      <p className="desk-lede">Keys for the other services the site talks to. They are stored encrypted, and once saved they are never shown again, here or anywhere: you can only replace or clear them.</p>
+      {!groups && <p className="desk-help">Loading…</p>}
       {groups?.map((g) => {
         const waiting = Object.fromEntries(g.keys.filter((k) => typed[k.name]?.trim()).map((k) => [k.name, typed[k.name]]));
         return (
           <form
-            className="ad-panel glass"
+            className="desk-panel glass"
             key={g.service}
             onSubmit={(e) => {
               e.preventDefault();
               if (Object.keys(waiting).length) put(waiting, `${g.service} saved.`);
             }}
           >
-            <h2 className="ad-h2">{g.service}</h2>
-            <p className="ad-help">{g.about}</p>
-            <div className="ad-fields">
+            <h2 className="desk-h2">{g.service}</h2>
+            <p className="desk-help">{g.about}</p>
+            <div className="desk-fields">
               {g.keys.map((k) => (
-                <div className="ad-field" data-wide="true" key={k.name}>
-                  <label htmlFor={`ad-key-${k.name}`}>
-                    {k.name} <span className="ad-tag" data-on={k.set}>{k.set ? (k.from === "environment" ? "Set in the .env file" : "Set") : "Not set"}</span>
+                <div className="desk-field" data-wide="true" key={k.name}>
+                  <label htmlFor={`desk-key-${k.name}`}>
+                    {k.name} <span className="desk-tag" data-on={k.set}>{k.set ? (k.from === "environment" ? "Set in the .env file" : "Set") : "Not set"}</span>
                   </label>
-                  {FILLED_IN.has(k.name) && <p className="ad-help">{k.set ? "Filled in by the Connect button below." : "Leave this alone: the Connect button below fills it in."}</p>}
-                  <div className="ad-row" hidden={FILLED_IN.has(k.name) && !k.set}>
-                    <input id={`ad-key-${k.name}`} type="password" hidden={FILLED_IN.has(k.name)} autoComplete="off" value={typed[k.name] ?? ""} placeholder={k.set ? "••••••••••••••••   saved (type to replace)" : "Paste the value"} onChange={(e) => setTyped({ ...typed, [k.name]: e.target.value })} />
+                  {FILLED_IN.has(k.name) && <p className="desk-help">{k.set ? "Filled in by the Connect button below." : "Leave this alone: the Connect button below fills it in."}</p>}
+                  <div className="desk-row" hidden={FILLED_IN.has(k.name) && !k.set}>
+                    <input id={`desk-key-${k.name}`} type="password" hidden={FILLED_IN.has(k.name)} autoComplete="off" value={typed[k.name] ?? ""} placeholder={k.set ? "••••••••••••••••   saved (type to replace)" : "Paste the value"} onChange={(e) => setTyped({ ...typed, [k.name]: e.target.value })} />
                     {k.set && k.from !== "environment" && (
-                      <button type="button" className="ad-btn ad-quiet" onClick={async () => (await confirmBox(`Clear ${k.name}?`, { yes: "Clear" })) && put({ [k.name]: "" }, `${k.name} cleared.`)}>
+                      <button type="button" className="desk-btn desk-quiet" onClick={async () => (await confirmBox(`Clear ${k.name}?`, { yes: "Clear" })) && put({ [k.name]: "" }, `${k.name} cleared.`)}>
                         Clear
                       </button>
                     )}
@@ -1138,7 +1295,7 @@ function Connections() {
             {g.service === "Apple Music" && <AppleMusicPanel keysSet={g.keys.filter((k) => k.set).length} onToken={(token) => put({ APPLE_MUSIC_USER_TOKEN: token }, "Apple Music connected.")} />}
             {g.service === "Strava" && <StravaPanel origin={origin} keysSet={g.keys.filter((k) => k.set).length} />}
             {g.service === "My phone" && (
-              <div className="ad-help">
+              <div className="desk-help">
                 <p>To have your phone keep "Where I am" up to date, make a Shortcut with these steps, and an automation that runs it when you arrive somewhere, or once a day:</p>
                 <ol>
                   <li>Get Current Location, then Get Details of Location for the city (or state), latitude and longitude.</li>
@@ -1164,8 +1321,8 @@ function Connections() {
                 </ol>
               </div>
             )}
-            <div className="ad-row">
-              <button type="submit" className="ad-btn ad-main" disabled={!Object.keys(waiting).length}>
+            <div className="desk-row">
+              <button type="submit" className="desk-btn desk-main" disabled={!Object.keys(waiting).length}>
                 Save
               </button>
             </div>
@@ -1220,8 +1377,8 @@ function AppleMusicPanel({ keysSet, onToken }: { keysSet: number; onToken: (toke
   };
   if (!status) return null;
   return (
-    <div className="ad-help">
-      {status.error && <p className="ad-error">{status.error}</p>}
+    <div className="desk-help">
+      {status.error && <p className="desk-error">{status.error}</p>}
       {!status.hasKey && !status.error && <p>Save the Team ID, Key ID and private key first; the Connect button appears after that.</p>}
       {status.hasKey && (
         <p>
@@ -1233,7 +1390,7 @@ function AppleMusicPanel({ keysSet, onToken }: { keysSet: number; onToken: (toke
         </p>
       )}
       {status.hasKey && (
-        <button type="button" className="ad-btn" disabled={busy} onClick={connect}>
+        <button type="button" className="desk-btn" disabled={busy} onClick={connect}>
           {busy ? "Waiting for Apple…" : status.connected ? "Connect again" : "Connect Apple Music"}
         </button>
       )}
@@ -1271,19 +1428,19 @@ function StravaPanel({ origin, keysSet }: { origin: string; keysSet: number }) {
   };
   if (!status) return null;
   return (
-    <div className="ad-help ad-strava">
+    <div className="desk-help desk-strava">
       {!status.connected ? (
         <>
           <p>
             In your Strava API application, set <b>Authorization Callback Domain</b> to <code>{origin.replace(/^https?:\/\//, "").replace(/:\d+$/, "")}</code> (the name only, no port). Then save the client ID and secret above and press Connect. Only activities you have made visible to followers or everyone are brought in; ones marked "Only you" never are.
           </p>
-          <div className="ad-row">
+          <div className="desk-row">
             {status.hasApp && api.stravaConnect ? (
-              <a className="ad-btn ad-main" href={api.stravaConnect}>
+              <a className="desk-btn desk-main" href={api.stravaConnect}>
                 Connect Strava
               </a>
             ) : (
-              <button type="button" className="ad-btn ad-main" disabled>
+              <button type="button" className="desk-btn desk-main" disabled>
                 Connect Strava
               </button>
             )}
@@ -1293,19 +1450,19 @@ function StravaPanel({ origin, keysSet }: { origin: string; keysSet: number }) {
       ) : (
         <>
           <p>
-            <span className="ad-tag" data-on="true">Connected</span> {status.athlete ? `as ${status.athlete}. ` : ""}
+            <span className="desk-tag" data-on="true">Connected</span> {status.athlete ? `as ${status.athlete}. ` : ""}
             {status.activities.toLocaleString("en-GB")} activities brought in ({status.detailed.toLocaleString("en-GB")} with their full detail{status.hidden ? `, ${status.hidden} hidden` : ""}). Last checked {ago(status.lastSync)}.
           </p>
-          {status.error && <p className="ad-error">The last check stopped: {status.error}</p>}
+          {status.error && <p className="desk-error">The last check stopped: {status.error}</p>}
           <p>The site checks for new activities by itself every 15 minutes, whether or not anyone is visiting. Splits and best efforts cost Strava one request per activity and Strava rations those (about 100 every 15 minutes, 1,000 a day), so a long history fills in 70 at a time: a thousand activities take most of a day. Everything else about an activity is there from the first check.</p>
-          <div className="ad-row">
-            <button type="button" className="ad-btn ad-main" disabled={!!busy || status.running} onClick={() => run("sync", "Checking…")}>
+          <div className="desk-row">
+            <button type="button" className="desk-btn desk-main" disabled={!!busy || status.running} onClick={() => run("sync", "Checking…")}>
               {busy === "Checking…" || status.running ? "Checking…" : "Check now"}
             </button>
-            <button type="button" className="ad-btn" disabled={!!busy} onClick={async () => (await confirmBox("Read your whole Strava history again? Anything deleted on Strava is removed here too.", { yes: "Import", danger: false })) && run("full", "Importing…")}>
+            <button type="button" className="desk-btn" disabled={!!busy} onClick={async () => (await confirmBox("Read your whole Strava history again? Anything deleted on Strava is removed here too.", { yes: "Import", danger: false })) && run("full", "Importing…")}>
               {busy === "Importing…" ? "Importing…" : "Import everything again"}
             </button>
-            <button type="button" className="ad-btn ad-quiet" disabled={!!busy} onClick={async () => (await confirmBox("Disconnect Strava?", { yes: "Disconnect" })) && run("disconnect", "…")}>
+            <button type="button" className="desk-btn desk-quiet" disabled={!!busy} onClick={async () => (await confirmBox("Disconnect Strava?", { yes: "Disconnect" })) && run("disconnect", "…")}>
               Disconnect
             </button>
           </div>
@@ -1368,20 +1525,20 @@ function ActivitiesScreen() {
   return (
     <>
       <Head trail={[["Admin", "/admin"]]} title="Training">
-        <button type="button" className="ad-btn" onClick={() => setAdding(!adding)}>
+        <button type="button" className="desk-btn" onClick={() => setAdding(!adding)}>
           Add by hand
         </button>
       </Head>
-      <p className="ad-lede">
+      <p className="desk-lede">
         Whatever your watch records reaches Strava and then arrives here by itself. Open one to add what the watch does not know: the kind of run, the weights, the score, how it felt, a note, pictures.{api.demo ? " In the preview the runs are from your spreadsheet and the rest are samples." : ""}
       </p>
       {sheet && sheet.spreadsheet > 0 && sheet.byHand === 0 && (
-        <div className="ad-offer glass">
+        <div className="desk-offer glass">
           <div>
             <b>Your old run spreadsheet</b>
             <p>{sheet.spreadsheet} runs with their types, notes and best times are ready to bring in. Ones Strava also has are joined to Strava's, not doubled.</p>
           </div>
-          <button type="button" className="ad-btn" disabled={bringing} onClick={bringIn}>
+          <button type="button" className="desk-btn" disabled={bringing} onClick={bringIn}>
             {bringing ? "Bringing them in…" : "Bring them in"}
           </button>
         </div>
@@ -1420,7 +1577,7 @@ function ActivitiesScreen() {
           <button type="button" className="sheet-link" onClick={() => setAdding(false)}>
             Cancel
           </button>
-          <button type="button" className="ad-btn ad-main" disabled={!fresh.date || !seconds(fresh.time) || (fresh.sport === "Run" && !Number(fresh.km.replace(",", ".")))} onClick={add}>
+          <button type="button" className="desk-btn desk-main" disabled={!fresh.date || !seconds(fresh.time) || (fresh.sport === "Run" && !Number(fresh.km.replace(",", ".")))} onClick={add}>
             Add it
           </button>
         </div>
@@ -1433,13 +1590,13 @@ function ActivitiesScreen() {
             </button>
           ))}
         </Tabs>
-        <input className="ad-find" type="search" placeholder="Search by name, sport or date" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="desk-find" type="search" placeholder="Search by name, sport or date" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
-      {found === 0 && <p className="ad-help">{q || kind ? "Nothing matches." : "Nothing has arrived yet. Connect Strava under Connections, or add something by hand."}</p>}
-      <ul className="ad-entries">
+      {found === 0 && <p className="desk-help">{q || kind ? "Nothing matches." : "Nothing has arrived yet. Connect Strava under Connections, or add something by hand."}</p>}
+      <ul className="desk-entries">
         {items.map((a) => (
-          <li key={a.id} className="ad-entry glass" data-hidden={a.hidden}>
-            <Go href={`/admin/activities/${a.id}`} className="ad-entry-main">
+          <li key={a.id} className="desk-entry glass" data-hidden={a.hidden}>
+            <Go href={`/admin/activities/${a.id}`} className="desk-entry-main">
               <strong>
                 {a.name && a.name !== "Run" ? a.name : KIND_NAMES[a.kind] === "Something else" ? sportName(a.sport) : KIND_NAMES[a.kind]}
                 {markOf(a.kind, a.log, typeName) && <i className="tr-mark">{markOf(a.kind, a.log, typeName)}</i>}
@@ -1457,8 +1614,8 @@ function ActivitiesScreen() {
         ))}
       </ul>
       {found !== null && items.length < found && (
-        <div className="ad-row">
-          <button type="button" className="ad-btn" onClick={() => load(items.length)}>
+        <div className="desk-row">
+          <button type="button" className="desk-btn" onClick={() => load(items.length)}>
             Earlier ones
           </button>
         </div>
@@ -1564,7 +1721,7 @@ function ActivityEditor({ id }: { id: string }) {
       </p>
 
       <section className="tr-box glass">
-        <h2 className="ad-h2">What was it?</h2>
+        <h2 className="desk-h2">What was it?</h2>
         <Tabs className="tr-tabs" cols={5} label="What kind of activity">
           {(Object.keys(KIND_NAMES) as (keyof typeof KIND_NAMES)[]).map((k) => (
             <button key={k} type="button" aria-pressed={kind === k} onClick={() => put({ ...log, as: k === a.kind && !log.as ? undefined : k })}>
@@ -1572,13 +1729,13 @@ function ActivityEditor({ id }: { id: string }) {
             </button>
           ))}
         </Tabs>
-        <p className="ad-help">Worked out from Strava. Change it if Strava got it wrong, and the right questions appear below.</p>
+        <p className="desk-help">Worked out from Strava. Change it if Strava got it wrong, and the right questions appear below.</p>
       </section>
 
       <Reveal show={kind === "run"}>
         {() => (
         <section className="tr-box glass">
-          <h2 className="ad-h2">The run</h2>
+          <h2 className="desk-h2">The run</h2>
           <div className="rla-types" role="group" aria-label="What kind of run">
             <Pill />
             {TYPES.map(([letter, name]) => (
@@ -1611,7 +1768,7 @@ function ActivityEditor({ id }: { id: string }) {
       <Reveal show={kind === "ride"}>
         {() => (
         <section className="tr-box glass">
-          <h2 className="ad-h2">The ride</h2>
+          <h2 className="desk-h2">The ride</h2>
           <Tabs className="tr-tabs" cols={4} label="What sort of ride">
             {RIDE_KINDS.map((k) => (
               <button key={k} type="button" aria-pressed={log.ride?.kind === k} onClick={() => put({ ...log, ride: { ...log.ride, kind: log.ride?.kind === k ? undefined : k } })}>
@@ -1642,8 +1799,8 @@ function ActivityEditor({ id }: { id: string }) {
       <Reveal show={kind === "gym"}>
         {() => (
         <section className="tr-box glass">
-          <h2 className="ad-h2">What you lifted</h2>
-          <p className="ad-help">Tap Done on each machine you used. If the weight went up, tap + first.</p>
+          <h2 className="desk-h2">What you lifted</h2>
+          <p className="desk-help">Tap Done on each machine you used. If the weight went up, tap + first.</p>
           <GymBoard day={day} />
         </section>
         )}
@@ -1652,7 +1809,7 @@ function ActivityEditor({ id }: { id: string }) {
       <Reveal show={kind === "padel"}>
         {() => (
         <section className="tr-box glass">
-          <h2 className="ad-h2">The padel</h2>
+          <h2 className="desk-h2">The padel</h2>
           <Tabs className="tr-tabs" cols={3} label="What kind of session">
             {PADEL_KINDS.map((k) => (
               <button key={k} type="button" aria-pressed={padel.kind === k} onClick={() => put({ ...log, padel: { ...padel, kind: padel.kind === k ? undefined : k } })}>
@@ -1666,8 +1823,8 @@ function ActivityEditor({ id }: { id: string }) {
               {sets.map((set, n) => (
                 <SetRow key={n} n={n + 1} set={set} onChange={(next) => put({ ...log, padel: { ...padel, sets: sets.map((x, k) => (k === n ? next : x)) } })} onRemove={() => put({ ...log, padel: { ...padel, sets: sets.filter((_, k) => k !== n) } })} />
               ))}
-              <div className="ad-row">
-                <button type="button" className="ad-btn" onClick={() => put({ ...log, padel: { ...padel, sets: [...sets, [6, 4]] } })}>
+              <div className="desk-row">
+                <button type="button" className="desk-btn" onClick={() => put({ ...log, padel: { ...padel, sets: [...sets, [6, 4]] } })}>
                   Add a set
                 </button>
                 {result && (
@@ -1701,7 +1858,7 @@ function ActivityEditor({ id }: { id: string }) {
       </Reveal>
 
       <section className="tr-box glass">
-        <h2 className="ad-h2">How it went</h2>
+        <h2 className="desk-h2">How it went</h2>
         <div className="rla-feel" role="group" aria-label="How it felt">
           <Pill />
           <span className="mono">Felt</span>
@@ -1715,7 +1872,7 @@ function ActivityEditor({ id }: { id: string }) {
       </section>
 
       <section className="tr-box glass">
-        <h2 className="ad-h2">Pictures and videos</h2>
+        <h2 className="desk-h2">Pictures and videos</h2>
         <div className="tr-media">
           {(log.media ?? []).map((m, n) => (
             <figure key={m.src.slice(-40) + n}>
@@ -1727,15 +1884,15 @@ function ActivityEditor({ id }: { id: string }) {
             </figure>
           ))}
         </div>
-        <button type="button" className="ad-btn" disabled={busy} onClick={() => pick.current?.click()}>
+        <button type="button" className="desk-btn" disabled={busy} onClick={() => pick.current?.click()}>
           {busy ? "Uploading…" : "Add pictures or videos"}
         </button>
         <input ref={pick} type="file" hidden multiple accept="image/*,video/*" onChange={(e) => (upload([...(e.target.files ?? [])]), (e.target.value = ""))} />
       </section>
 
       <section className="tr-box glass">
-        <h2 className="ad-h2">Anything else</h2>
-        <p className="ad-help">Your own facts, named however you like: shoes, court, weather, who you ran with.</p>
+        <h2 className="desk-h2">Anything else</h2>
+        <p className="desk-help">Your own facts, named however you like: shoes, court, weather, who you ran with.</p>
         {(log.extras ?? []).map((x, n) => (
           <div key={n} className="tr-extra">
             <input defaultValue={x.label} placeholder="Shoes" onBlur={(e) => e.target.value !== x.label && put({ ...log, extras: (log.extras ?? []).map((y, k) => (k === n ? { ...y, label: e.target.value } : y)) })} aria-label="Name" />
@@ -1748,13 +1905,13 @@ function ActivityEditor({ id }: { id: string }) {
         <NewExtra onAdd={(label, value) => put({ ...log, extras: [...(log.extras ?? []), { label, value }] })} />
       </section>
 
-      <div className="ad-row tr-end">
-        <Go href={`/sport/activities/${a.id}`} className="ad-btn">
+      <div className="desk-row tr-end">
+        <Go href={`/sport/activities/${a.id}`} className="desk-btn">
           See it on the site
         </Go>
         <button
           type="button"
-          className="ad-btn ad-quiet"
+          className="desk-btn desk-quiet"
           onClick={async () => {
             try {
               await api.hideActivity(a.id, !a.hidden);
@@ -1770,7 +1927,7 @@ function ActivityEditor({ id }: { id: string }) {
         {a.id.startsWith("-") && (
           <button
             type="button"
-            className="ad-btn ad-danger"
+            className="desk-btn desk-danger"
             onClick={async () => {
               if (!(await confirmBox("Delete this for good?"))) return;
               try {
@@ -1846,7 +2003,7 @@ function GymBoard({ day }: { day: string }) {
   };
   return (
     <>
-      {!entries && <p className="ad-help">Loading…</p>}
+      {!entries && <p className="desk-help">Loading…</p>}
       <ul className="gyl">
         {(entries ?? []).map((e) => {
           const lift = liftOf(e);
@@ -1907,7 +2064,7 @@ function GymBoard({ day }: { day: string }) {
                     {lift.log.filter((x) => x.date).length ? lift.log.filter((x) => x.date).map((x) => x.value).join(" → ") : "Nothing logged yet"}
                     {counted(lift) && lift.log.some((x) => x.date) ? ` ${lift.unit}` : ""}
                   </p>
-                  <Go href={`/admin/lift/${e.id}`} className="ad-btn ad-quiet">
+                  <Go href={`/admin/lift/${e.id}`} className="desk-btn desk-quiet">
                     Unit, step, dates, delete
                   </Go>
                 </div>
@@ -1918,7 +2075,7 @@ function GymBoard({ day }: { day: string }) {
       </ul>
       <div className="gyl-add glass">
         <input value={name} placeholder="Add a machine" onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} aria-label="A new machine or exercise" />
-        <button type="button" className="ad-btn ad-main" disabled={!name.trim()} onClick={add}>
+        <button type="button" className="desk-btn desk-main" disabled={!name.trim()} onClick={add}>
           Add
         </button>
       </div>
@@ -2035,12 +2192,12 @@ function CardsScreen({ topic }: { topic: string }) {
     <>
       <Head trail={[["Admin", "/admin"]]} title="Cards">
         {at && (
-          <Go className="ad-btn ad-quiet" href={`/learning/${String(at.data.subject ?? "")}/${at.slug}`}>
+          <Go className="desk-btn desk-quiet" href={`/learning/${String(at.data.subject ?? "")}/${at.slug}`}>
             See the deck
           </Go>
         )}
       </Head>
-      {!topics && <p className="ad-help">Loading…</p>}
+      {!topics && <p className="desk-help">Loading…</p>}
       {topics && at && (
         <div className="cd-pick">
           <Pick
@@ -2053,7 +2210,7 @@ function CardsScreen({ topic }: { topic: string }) {
       )}
       {topics && !at && (
         <>
-          <p className="ad-lede">{topic ? "That topic is not there. Here are the ones that are." : "Flashcards live in a topic. Which one?"}</p>
+          <p className="desk-lede">{topic ? "That topic is not there. Here are the ones that are." : "Flashcards live in a topic. Which one?"}</p>
           {subjects
             .map((sub) => [sub, topics.filter((t) => t.data.subject === sub.slug)] as const)
             .filter(([, list]) => list.length)
@@ -2071,7 +2228,7 @@ function CardsScreen({ topic }: { topic: string }) {
               </section>
             ))}
           {topics.length === 0 && (
-            <p className="ad-help">
+            <p className="desk-help">
               There are no topics yet. <Go href="/admin/topic/new">Make one</Go> first.
             </p>
           )}
@@ -2099,7 +2256,7 @@ function CardsScreen({ topic }: { topic: string }) {
                 <button type="button" className="sheet-link" onClick={() => setMany(false)}>
                   Cancel
                 </button>
-                <button type="button" className="ad-btn ad-main" disabled={busy || !found.length} onClick={addMany}>
+                <button type="button" className="desk-btn desk-main" disabled={busy || !found.length} onClick={addMany}>
                   {found.length ? `Add ${found.length} ${found.length === 1 ? "card" : "cards"}` : "Add"}
                 </button>
               </div>
@@ -2112,7 +2269,7 @@ function CardsScreen({ topic }: { topic: string }) {
             )}
             <div className="cd-add-foot">
               <Pick label="Into" value={groups.includes(into) ? into : into ? NEW : ""} options={into && !groups.includes(into) ? [["", "No group"] as const, ...groups.map((g) => [g, g] as const), [NEW, into] as const] : groupOptions} onChange={async (v) => setInto(v === NEW ? (await named(NEW)) || into : v)} />
-              <button type="submit" className="ad-btn ad-main" disabled={busy || !front.trim() || !back.trim()}>
+              <button type="submit" className="desk-btn desk-main" disabled={busy || !front.trim() || !back.trim()}>
                 Add
               </button>
             </div>
@@ -2157,7 +2314,7 @@ function CardsScreen({ topic }: { topic: string }) {
               )}
             </div>
           )}
-          {rows.length === 0 && <p className="ad-help">No cards in this topic yet.</p>}
+          {rows.length === 0 && <p className="desk-help">No cards in this topic yet.</p>}
           <ul className="cd-list">
             {shown.map(([r, n]) => (
               <li key={`${n}|${r[0]}|${r[1]}`} style={{ ["--n" as string]: Math.min(n, 12) }}>
@@ -2191,7 +2348,7 @@ function CardsScreen({ topic }: { topic: string }) {
                     <button type="button" className="sheet-link sheet-bad" disabled={busy} onClick={() => (setOpen(-1), change(rows.filter((_r, k) => k !== n), `“${r[0]}” deleted.`))}>
                       Delete this card
                     </button>
-                    <button type="button" className="ad-btn ad-main" onClick={() => setOpen(-1)}>
+                    <button type="button" className="desk-btn desk-main" onClick={() => setOpen(-1)}>
                       Done
                     </button>
                   </div>
@@ -2209,11 +2366,11 @@ function GymScreen() {
   return (
     <>
       <Head trail={[["Admin", "/admin"]]} title="Gym">
-        <Go href="/sport/gym" className="ad-btn">
+        <Go href="/sport/gym" className="desk-btn">
           See the page
         </Go>
       </Head>
-      <p className="ad-lede">
+      <p className="desk-lede">
         Today's visit, without waiting for Strava. Tap <b>Done</b> on a machine to log it at the weight shown; if it went up, tap <b>+</b> first. When the workout arrives from your watch, it will already show these.
       </p>
       <GymBoard day={today()} />
@@ -2243,26 +2400,26 @@ function MediaScreen() {
   return (
     <>
       <Head trail={[["Admin", "/admin"]]} title="Media library">
-        <button type="button" className="ad-btn ad-main" disabled={!!busy} onClick={() => input.current?.click()}>
+        <button type="button" className="desk-btn desk-main" disabled={!!busy} onClick={() => input.current?.click()}>
           {busy || "Upload files"}
         </button>
       </Head>
       <input ref={input} type="file" hidden multiple onChange={(e) => (send([...(e.target.files ?? [])]), (e.target.value = ""))} />
-      <p className="ad-lede">Everything you have uploaded: photographs, audio, video, scores and PDFs, up to 200 MB each. You can also upload from inside any form.</p>
-      {media && media.length === 0 && <p className="ad-help">Nothing uploaded yet.</p>}
-      <ul className="ad-media">
+      <p className="desk-lede">Everything you have uploaded: photographs, audio, video, scores and PDFs, up to 200 MB each. You can also upload from inside any form.</p>
+      {media && media.length === 0 && <p className="desk-help">Nothing uploaded yet.</p>}
+      <ul className="desk-media">
         {media?.map((m) => (
           <li key={m.id} className="glass">
-            {m.mime.startsWith("image/") ? <img src={m.url} alt="" loading="lazy" /> : <span className="ad-pick-file">{m.name.split(".").pop()}</span>}
+            {m.mime.startsWith("image/") ? <img src={m.url} alt="" loading="lazy" /> : <span className="desk-pick-file">{m.name.split(".").pop()}</span>}
             <strong title={m.name}>{m.name}</strong>
-            <span className="ad-count">{size(m.size)}</span>
-            <div className="ad-row">
-              <button type="button" className="ad-btn" onClick={() => copyText(m.url).then((ok) => toast(ok ? "Address copied." : m.url))}>
+            <span className="desk-count">{size(m.size)}</span>
+            <div className="desk-row">
+              <button type="button" className="desk-btn" onClick={() => copyText(m.url).then((ok) => toast(ok ? "Address copied." : m.url))}>
                 Copy address
               </button>
               <button
                 type="button"
-                className="ad-btn ad-quiet"
+                className="desk-btn desk-quiet"
                 onClick={async () => {
                   if (!(await confirmBox(`Delete ${m.name}? Anything on the site that uses it will lose it.`))) return;
                   await api.removeMedia(m.id).then(() => toast(`${m.name} deleted.`), (err) => toast(err.message, true));
@@ -2306,7 +2463,7 @@ function SignIn({ onDone, passkeys }: { onDone: () => void; passkeys: boolean })
   };
   return (
     <form
-      className="ad-panel ad-signin glass"
+      className="desk-panel desk-signin glass"
       onSubmit={async (e) => {
         e.preventDefault();
         setBusy(true);
@@ -2325,32 +2482,32 @@ function SignIn({ onDone, passkeys }: { onDone: () => void; passkeys: boolean })
         setBusy(false);
       }}
     >
-      <h1 className="ad-title">Admin</h1>
+      <h1 className="desk-title">Admin</h1>
       {second ? (
-        <div className="ad-field" data-wide="true">
-          <p className="ad-help">The password is right. Now the passkey: Face ID, Touch ID, a password manager or a security key.</p>
-          {error && <p className="ad-error" role="alert">{error}</p>}
-          <button type="button" className="ad-btn ad-main" disabled={busy} onClick={withPasskey}>
+        <div className="desk-field" data-wide="true">
+          <p className="desk-help">The password is right. Now the passkey: Face ID, Touch ID, a password manager or a security key.</p>
+          {error && <p className="desk-error" role="alert">{error}</p>}
+          <button type="button" className="desk-btn desk-main" disabled={busy} onClick={withPasskey}>
             {busy ? "Waiting for the passkey…" : "Use the passkey"}
           </button>
         </div>
       ) : (
         <>
           {passkeys && (
-            <div className="ad-field" data-wide="true">
-              <button type="button" className="ad-btn ad-main" disabled={busy} onClick={withPasskey}>
+            <div className="desk-field" data-wide="true">
+              <button type="button" className="desk-btn desk-main" disabled={busy} onClick={withPasskey}>
                 {busy ? "Waiting for the passkey…" : "Sign in with a passkey"}
               </button>
-              <p className="ad-help">Or with the password:</p>
+              <p className="desk-help">Or with the password:</p>
             </div>
           )}
-          <div className="ad-field" data-wide="true">
-            <label htmlFor="ad-password">Password</label>
-            <input id="ad-password" type="password" autoComplete="current-password" autoFocus={!passkeys} value={password} onChange={(e) => setPassword(e.target.value)} />
-            {api.demo && <p className="ad-help">This is the preview: any password works, and nothing you change is kept after you close it.</p>}
-            {error && <p className="ad-error" role="alert">{error}</p>}
+          <div className="desk-field" data-wide="true">
+            <label htmlFor="desk-password">Password</label>
+            <input id="desk-password" type="password" autoComplete="current-password" autoFocus={!passkeys} value={password} onChange={(e) => setPassword(e.target.value)} />
+            {api.demo && <p className="desk-help">This is the preview: any password works, and nothing you change is kept after you close it.</p>}
+            {error && <p className="desk-error" role="alert">{error}</p>}
           </div>
-          <button type="submit" className={`ad-btn ${passkeys ? "ad-quiet" : "ad-main"}`} disabled={busy || !password}>
+          <button type="submit" className={`desk-btn ${passkeys ? "desk-quiet" : "desk-main"}`} disabled={busy || !password}>
             {busy ? "Checking…" : "Sign in"}
           </button>
         </>
@@ -2402,17 +2559,17 @@ function PasskeysPanel() {
   };
   const when = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   return (
-    <section className="ad-panel glass">
-      <h2 className="ad-h2">Passkeys</h2>
-      <p className="ad-help">
+    <section className="desk-panel glass">
+      <h2 className="desk-h2">Passkeys</h2>
+      <p className="desk-help">
         Sign in with Face ID, Touch ID, a password manager or a security key instead of typing the password. A passkey cannot be phished or guessed. Add one from each device (or from a password manager, which then works everywhere).
       </p>
       {!have ? (
-        <p className="ad-help">Loading…</p>
+        <p className="desk-help">Loading…</p>
       ) : (
         <>
           {have.passkeys.length > 0 && (
-            <ul className="ad-keys">
+            <ul className="desk-keys">
               {have.passkeys.map((k) => (
                 <li key={k.id}>
                   <b>{k.name}</b>
@@ -2420,25 +2577,25 @@ function PasskeysPanel() {
                     added {when(k.createdAt)}
                     {k.lastUsedAt ? ` · used ${when(k.lastUsedAt)}` : ""}
                   </span>
-                  <button type="button" className="ad-btn ad-quiet" onClick={() => remove(k.id, k.name)}>
+                  <button type="button" className="desk-btn desk-quiet" onClick={() => remove(k.id, k.name)}>
                     Remove
                   </button>
                 </li>
               ))}
             </ul>
           )}
-          <div className="ad-row">
-            <button type="button" className="ad-btn ad-main" disabled={busy || !can || api.demo} onClick={add}>
+          <div className="desk-row">
+            <button type="button" className="desk-btn desk-main" disabled={busy || !can || api.demo} onClick={add}>
               {busy ? "Waiting…" : "Add a passkey"}
             </button>
-            {!can && <span className="ad-help">This browser cannot make passkeys.</span>}
-            {api.demo && <span className="ad-help">Passkeys need the real site, not the preview.</span>}
+            {!can && <span className="desk-help">This browser cannot make passkeys.</span>}
+            {api.demo && <span className="desk-help">Passkeys need the real site, not the preview.</span>}
           </div>
-          <label className="ad-switch">
+          <label className="desk-switch">
             <input type="checkbox" checked={have.twoStep} disabled={!have.passkeys.length} onChange={(e) => twoStep(e.target.checked)} />
             <span>
               Ask for a passkey after the password too
-              <small className="ad-help"> — the password alone no longer gets in. Needs a passkey first; lost all of them? Remove the <code>security</code> row from the settings table.</small>
+              <small className="desk-help"> — the password alone no longer gets in. Needs a passkey first; lost all of them? Remove the <code>security</code> row from the settings table.</small>
             </span>
           </label>
         </>
@@ -2450,7 +2607,8 @@ function PasskeysPanel() {
 type Said = { text: string; bad: boolean; n: number; until: number };
 let lastSaid: Said | null = null;
 
-// "Loading…", and after a while a way out, since a page that never arrives is worse than one that says so.
+// While the admin area is on its way: the shape of a panel, shimmering, rather than a word. After a while, a way out,
+// since a page that never arrives is worse than one that says so.
 function Waiting() {
   const [long, setLong] = useState(false);
   useEffect(() => {
@@ -2458,15 +2616,22 @@ function Waiting() {
     return () => window.clearTimeout(t);
   }, []);
   return (
-    <p className="ad-help">
-      Loading…
+    <div className="desk-skel" role="status" aria-label="Loading">
+      <div className="desk-panel glass">
+        <span className="desk-skel-line" style={{ width: "34%", height: 28 }} />
+        <span className="desk-skel-line" style={{ width: "72%" }} />
+        <span className="desk-skel-line" style={{ width: "58%" }} />
+        <div className="desk-skel-row">
+          <span className="desk-skel-line" style={{ width: 120, height: 40, borderRadius: 999 }} />
+          <span className="desk-skel-line" style={{ width: 92, height: 40, borderRadius: 999 }} />
+        </div>
+      </div>
       {long && (
-        <>
-          {" "}
+        <p className="desk-help">
           This is taking a while. <a href="/admin">Load the page again</a>, and if that does not help, clear this site&rsquo;s data in the browser (an old copy of the site can get in the way after an update).
-        </>
+        </p>
       )}
-    </p>
+    </div>
   );
 }
 
@@ -2507,25 +2672,25 @@ export function AdminApp() {
   if (!session) screen = <Waiting />;
   else if (session.blocked)
     screen = (
-      <section className="ad-panel glass">
-        <h1 className="ad-title">Something in this browser is in the way</h1>
-        <p className="ad-lede">
+      <section className="desk-panel glass">
+        <h1 className="desk-title">Something in this browser is in the way</h1>
+        <p className="desk-lede">
           The admin area asked the site whether you are signed in, and the request was stopped before it left the browser. That is nearly always an ad blocker or privacy extension. Allow <code>{typeof location === "undefined" ? "this site" : location.host}</code> in it (or turn it off for this site) and <a href="/admin">load the page again</a>.
         </p>
       </section>
     );
   else if (!session.database)
     screen = (
-      <section className="ad-panel glass">
-        <h1 className="ad-title">No database yet</h1>
-        <p className="ad-lede">The site is running without a database, so it is showing its starting content and there is nothing to edit. Run <code>./setup.sh</code> (or <code>docker compose up</code>) to start it with one; the README has the details.</p>
+      <section className="desk-panel glass">
+        <h1 className="desk-title">No database yet</h1>
+        <p className="desk-lede">The site is running without a database, so it is showing its starting content and there is nothing to edit. Run <code>./setup.sh</code> (or <code>docker compose up</code>) to start it with one; the README has the details.</p>
       </section>
     );
   else if (!session.passwordSet)
     screen = (
-      <section className="ad-panel glass">
-        <h1 className="ad-title">Set a password first</h1>
-        <p className="ad-lede">Put <code>ADMIN_PASSWORD</code> (eight characters or more) in the <code>.env</code> file and restart the site.</p>
+      <section className="desk-panel glass">
+        <h1 className="desk-title">Set a password first</h1>
+        <p className="desk-lede">Put <code>ADMIN_PASSWORD</code> (eight characters or more) in the <code>.env</code> file and restart the site.</p>
       </section>
     );
   else if (!session.signedIn) screen = <SignIn onDone={check} passkeys={!!session.passkeys} />;
@@ -2535,6 +2700,7 @@ export function AdminApp() {
       parts.length === 0 ? <Dashboard />
       : parts[0] === "settings" ? <SettingsScreen />
       : parts[0] === "connections" ? <Connections />
+      : parts[0] === "cv" ? <CvScreen />
       : parts[0] === "media" ? <MediaScreen />
       : parts[0] === "activities" && parts[1] ? <ActivityEditor key={parts[1]} id={parts[1]} />
       : parts[0] === "activities" ? <ActivitiesScreen />
@@ -2550,16 +2716,16 @@ export function AdminApp() {
     <Nav.Provider value={go}>
       <Toast.Provider value={say}>
         <AskHost />
-        <main className="page ad-page" data-kind="admin">
-          <div className="wrap ad-wrap">
-            {api.demo && session?.signedIn && <p className="ad-demo">Preview: changes work and show on the site, but are forgotten on reload.</p>}
+        <main className="page desk-page" data-kind="admin">
+          <div className="wrap desk-wrap">
+            {api.demo && session?.signedIn && <p className="desk-demo">Preview: changes work and show on the site, but are forgotten on reload.</p>}
             {screen}
           </div>
           {/* In <body>, so it sits at the bottom of the window wherever the page has been scrolled to. */}
           {toast &&
             typeof document !== "undefined" &&
             createPortal(
-              <p key={toast.n} className="ad-toast" data-bad={toast.bad} role="status" style={{ ["--stay" as string]: `${Math.max(600, toast.until - Date.now())}ms` }}>
+              <p key={toast.n} className="desk-toast" data-bad={toast.bad} role="status" style={{ ["--stay" as string]: `${Math.max(600, toast.until - Date.now())}ms` }}>
                 <i aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
                     {toast.bad ? <path d="M12 7v6.500M12 17.200v.100" /> : <path d="M6.500 12.500l3.800 3.800 7.200-8.300" />}

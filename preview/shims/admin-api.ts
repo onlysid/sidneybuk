@@ -1,4 +1,5 @@
 // Stand-in for lib/admin/api.ts in the single-file preview: the same calls, answered from memory, so the admin area can be tried without a server.
+import { seedCv, type Cv } from "@/lib/cv";
 import { KINDS, slugify, type Entry, type Kind } from "@/lib/admin/kinds";
 import { sample as seed, type Content, type Settings } from "@/lib/content";
 const seedSettings = seed.settings;
@@ -110,6 +111,8 @@ export const api = {
   signIn: (_password: string) => soon({ signedIn: (signedIn = true) }),
   passkeyChallenge: () => Promise.reject(new Error("Passkeys need the real site.")),
   passkeySignIn: (_answer: unknown) => Promise.reject(new Error("Passkeys need the real site.")),
+  cv: () => soon({ ...seedCv }),
+  saveCv: (cv: Cv) => soon({ ...cv, updatedAt: new Date().toISOString() }),
   passkeys: () => soon({ passkeys: [], twoStep: false }),
   passkeyAddChallenge: () => Promise.reject(new Error("Passkeys need the real site.")),
   passkeyAdd: (_answer: unknown, _name: string) => soon({ passkeys: [], twoStep: false }),

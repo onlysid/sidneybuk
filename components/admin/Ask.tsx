@@ -79,10 +79,10 @@ export function AskHost() {
         <p>{asking.message}</p>
         {asking.kind === "text" && <input ref={field} value={typed} onChange={(e) => setTyped(e.target.value.replace(/^\s+/, ""))} aria-label={asking.message} autoComplete="off" autoCorrect="off" spellCheck={false} enterKeyHint="done" />}
         <div className="ask-row">
-          <button type="button" className="ad-btn ad-quiet" onClick={() => answer(false)}>
+          <button type="button" className="desk-btn desk-quiet" onClick={() => answer(false)}>
             Cancel
           </button>
-          <button ref={main} type="submit" className={`ad-btn ${asking.kind === "confirm" && asking.danger ? "ad-danger ask-danger" : "ad-main"}`}>
+          <button ref={main} type="submit" className={`desk-btn ${asking.kind === "confirm" && asking.danger ? "desk-danger ask-danger" : "desk-main"}`}>
             {asking.yes}
           </button>
         </div>

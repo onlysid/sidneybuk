@@ -52,6 +52,10 @@ docker compose cp app:/data/uploads ./uploads-backup
 - **Settings:** where I am (with a map), an away note, the yearly goal, and what the sport pages show.
 - **Connections:** API keys for Strava, Last.fm or Spotify, Apple Music, and the token your phone uses. Keys are stored encrypted with `APP_SECRET`.
 
+## The CV
+
+`/cv` shows the CV and offers it as a PDF in light and dark (`/cv/pdf?theme=dark`), both made on the server from what is written under Admin → CV and stamped with the date it was last edited. The typefaces for the PDF are in `lib/cv/fonts`.
+
 ## Your phone
 
 Set `LOCATION_TOKEN` under Connections, then Shortcuts can `POST` to the site with the header `Authorization: Bearer <token>`:

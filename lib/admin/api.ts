@@ -7,6 +7,7 @@ export type KeyGroup = { service: string; about: string; keys: { name: string; s
 export type AppleMusicStatus = { developerToken: string; hasKey: boolean; connected: boolean; works: boolean | null; status: number; track: { title: string; artist: string } | null; error: string };
 export type StravaStatus = { hasApp: boolean; connected: boolean; lastSync?: string; athlete?: string; error?: string; running: boolean; activities: number; detailed: number; hidden: number };
 export type AdminActivity = { id: string; sport: string; name: string; start_local: string; distance: number; moving: number; hr?: number; hidden: boolean; log: ActivityLog; kind: ActivityKind; has?: { hr: boolean; cadence: boolean } };
+import type { Cv } from "@/lib/cv";
 export type Passkey = { id: string; name: string; createdAt: string; lastUsedAt: string | null; transports: string[] };
 export type Passkeys = { passkeys: Passkey[]; twoStep: boolean };
 export type Media = { id: string; url: string; name: string; mime: string; size: number; createdAt: string };
@@ -26,6 +27,8 @@ export const api = {
   // Passkeys: the browser is handed a challenge, answers it with Face ID / Touch ID / a security key, and the site checks the answer.
   passkeyChallenge: () => call<Record<string, unknown>>("/api/admin/session/passkey"),
   passkeySignIn: (answer: unknown) => call<{ signedIn: boolean; used: string }>("/api/admin/session/passkey", { method: "POST", body: JSON.stringify(answer) }),
+  cv: () => call<Cv>("/api/admin/cv"),
+  saveCv: (cv: Cv) => call<Cv>("/api/admin/cv", { method: "PUT", body: JSON.stringify(cv) }),
   passkeys: () => call<Passkeys>("/api/admin/passkeys"),
   passkeyAddChallenge: () => call<Record<string, unknown>>("/api/admin/passkeys", { method: "PUT" }),
   passkeyAdd: (answer: unknown, name: string) => call<Passkeys>("/api/admin/passkeys", { method: "POST", body: JSON.stringify({ answer, name }) }),

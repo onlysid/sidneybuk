@@ -230,7 +230,7 @@ function useMedia() {
     let el: HTMLMediaElement | null = null;
     const mine = (e: Event) => {
       const t = e.target;
-      return t instanceof HTMLMediaElement && !t.muted && !t.closest(".ad-page") && !t.dataset.noDock ? t : null;
+      return t instanceof HTMLMediaElement && !t.muted && !t.closest(".desk-page") && !t.dataset.noDock ? t : null;
     };
     const tick = () => el && playback.progress(id, el.duration ? el.currentTime / el.duration : 0, el.duration ? `${clockOf(el.currentTime)} / ${clockOf(el.duration)}` : clockOf(el.currentTime));
     const onPlay = (e: Event) => {
