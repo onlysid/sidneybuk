@@ -116,8 +116,8 @@ function Bullets({ items, s }: { items: string[]; s: Styles }) {
 // The site's mark beside the name: the app icon itself.
 function Mark() {
   return (
-    <View style={{ width: 26, height: 26, borderRadius: 7, overflow: "hidden", marginRight: 9, marginBottom: 4 }}>
-      <Image src={path.join(process.cwd(), "public", "icons", "icon-512.png")} style={{ width: 26, height: 26 }} />
+    <View style={{ width: 36, height: 36, borderRadius: 9, overflow: "hidden", marginRight: 11, marginBottom: 2 }}>
+      <Image src={path.join(process.cwd(), "public", "icons", "icon-512.png")} style={{ width: 36, height: 36 }} />
     </View>
   );
 }

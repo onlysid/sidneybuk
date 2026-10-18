@@ -30,7 +30,7 @@ await build({
   format: "iife",
   jsx: "automatic",
   outdir: here(".out"),
-  define: { "process.env.NODE_ENV": '"production"' },
+  define: { "process.env.NODE_ENV": '"production"', "process.env.NEXT_PUBLIC_BUILT_AT": JSON.stringify(new Date().toISOString()), "process.env.NEXT_PUBLIC_COMMIT": '""' },
   loader: { ".svg": "base64", ".jpg": "base64", ".png": "base64", ".wav": "base64", ".txt": "base64", ".musicxml": "text" },
   alias: { "next/navigation": here("shims/navigation.ts"), "@/lib/assets": here("shims/assets.ts"), "@/lib/admin/api": here("shims/admin-api.ts"), "next/dynamic": here("shims/dynamic.tsx"), "world-atlas/countries-50m.json": here("countries-50m-small.json") },
   // (The preview has a size limit: its copy of the detailed world outline is stored a little more coarsely.)

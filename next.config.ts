@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { execSync } from "node:child_process";
 import { networkInterfaces } from "node:os";
 
 // While developing, the site may be opened from this machine by any of its names, or from a phone on the same network by this machine's address.
@@ -14,7 +15,15 @@ const devOrigins = [
   ...(process.env.DEV_ORIGINS ?? "").split(",").map((x) => x.trim()).filter(Boolean),
 ];
 
+// When this copy of the site was built, and from which commit if that is known: the footer shows it.
+const builtAt = new Date().toISOString();
+let commit = "";
+try {
+  commit = execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+} catch {}
+
 const nextConfig: NextConfig = {
+  env: { NEXT_PUBLIC_BUILT_AT: builtAt, NEXT_PUBLIC_COMMIT: commit },
   reactStrictMode: true,
   allowedDevOrigins: devOrigins,
   // Do not write notes for coding assistants into the project while developing.

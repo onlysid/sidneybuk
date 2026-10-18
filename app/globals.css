@@ -4336,7 +4336,7 @@ html[data-rest] .lens, html[data-rest] .name, html[data-rest] .live canvas, html
 .cv { max-width: 860px; margin-inline: auto; border-radius: 28px; padding: clamp(22px, 5vw, 48px); }
 .cv-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .cv-who { display: flex; align-items: flex-end; gap: 12px; }
-.cv-mark { display: block; width: 40px; height: 40px; margin-bottom: 4px; border-radius: 11px; }
+.cv-mark { display: block; width: 54px; height: 54px; margin-bottom: 2px; border-radius: 15px; }
 .cv-head h2 { margin: 0; font-size: clamp(1.7rem, 4vw, 2.3rem); letter-spacing: -0.02em; line-height: 1; }
 .cv-headline { margin: 6px 0 0; font-size: 0.66rem; }
 .cv-reach { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; margin: 0; font-size: 0.82rem; }
@@ -4402,3 +4402,10 @@ html[data-rest] .lens, html[data-rest] .name, html[data-rest] .live canvas, html
 .desk-lines[data-chips] .desk-line-tools button { width: 24px; height: 24px; border-radius: 999px; font-size: 0.75rem; }
 .desk-lines[data-chips] .desk-line:hover .desk-line-tools, .desk-lines[data-chips] .desk-line:focus-within .desk-line-tools { opacity: 1; }
 .desk-lines[data-chips] .desk-line:hover input, .desk-lines[data-chips] .desk-line:focus-within input { padding-right: 82px; }
+
+/* The footer's "Updated …" note: the footer's own type, with a dot before it */
+.footer-left { display: inline-flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.built { display: inline-flex; align-items: center; gap: 7px; color: inherit; text-decoration: none; opacity: 0.7 !important; transition: opacity 0.2s; }
+.built:hover { opacity: 1 !important; }
+.built-dot { width: 7px; height: 7px; border-radius: 50%; background: linear-gradient(135deg, var(--rose), var(--mauve)); box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--mauve) 22%, transparent); }
+.built-sha { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); }

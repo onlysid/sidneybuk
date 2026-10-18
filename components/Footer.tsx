@@ -5,6 +5,7 @@ import { disciplines, site as identity } from "@/lib/site";
 import { InstallButton } from "./Install";
 import { Mark } from "./Mark";
 import { TLink } from "./Transition";
+import { Built } from "./Built";
 
 // The foot of every page, kept light: who this is, one line of every section, and one quiet line of housekeeping.
 export function Footer() {
@@ -40,8 +41,11 @@ export function Footer() {
         <TLink href="/blog">Blog</TLink>
       </nav>
       <div className="footer-base">
-        <span>
-          © {new Date().getFullYear()} {identity.name}
+        <span className="footer-left">
+          <span>
+            © {new Date().getFullYear()} {identity.name}
+          </span>
+          <Built />
         </span>
         <span className="footer-small">
           <TLink href="/contact">Contact</TLink>
