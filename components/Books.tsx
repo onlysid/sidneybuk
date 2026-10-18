@@ -1,5 +1,6 @@
 "use client";
 
+import { Pic } from "./Pic";
 import { Pill } from "@/components/Pill";
 import { useContent } from "@/components/Content";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -49,7 +50,7 @@ export function Cover({ book, eager = false }: { book: Book; eager?: boolean }) 
         <small>{book.author}</small>
       </span>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {src && !failed && <img src={src} alt={`Cover of ${book.title}`} loading={eager ? "eager" : "lazy"} onError={() => setFailed(true)} />}
+      {src && !failed && <Pic src={src} alt={`Cover of ${book.title}`} upTo={260} sizes="(max-width: 480px) 40vw, 260px" eager={eager} onError={() => setFailed(true)} />}
     </span>
   );
 }

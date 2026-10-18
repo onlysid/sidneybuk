@@ -16,7 +16,7 @@ export function WorkArt({ piece, n = 0 }: { piece: Piece; n?: number }) {
   if (shot)
     return (
       <div className="work-pic">
-        <Shot className="work-shot" src={assets.work[shot.src]} alt={shot.alt} fallback={<Drawn piece={piece} n={n} />} />
+        <Shot className="work-shot" src={assets.work[shot.src]} alt={shot.alt} upTo={720} sizes="(max-width: 760px) 100vw, 720px" fallback={<Drawn piece={piece} n={n} />} />
         {shot.badge && <Shot className="work-badge" src={assets.work[shot.badge]} alt="" />}
       </div>
     );

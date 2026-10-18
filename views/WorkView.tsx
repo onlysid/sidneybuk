@@ -85,7 +85,7 @@ export function WorkView({ piece }: { piece: (typeof work)[number] }) {
           <AutoScroll className="work-phones" label="Screenshots">
             {phones.map((shot) => (
               <figure key={shot.src} data-pad={!!shot.pad}>
-                <Shot src={assets.work[shot.src]} alt={shot.alt} />
+                <Shot src={assets.work[shot.src]} alt={shot.alt} upTo={250} sizes="250px" />
               </figure>
             ))}
           </AutoScroll>
@@ -95,7 +95,7 @@ export function WorkView({ piece }: { piece: (typeof work)[number] }) {
           <div className="work-shots">
             {photos.map((shot) => (
               <figure key={shot.src} className="glass">
-                <Shot src={assets.work[shot.src]} alt={shot.alt} />
+                <Shot src={assets.work[shot.src]} alt={shot.alt} upTo={250} sizes="250px" />
                 <figcaption>{shot.alt}</figcaption>
               </figure>
             ))}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Pic } from "@/components/Pic";
 import { Pill } from "@/components/Pill";
 import { Empty } from "@/components/Empty";
 import { useEffect, useMemo, useState } from "react";
@@ -631,7 +632,7 @@ function Mine({ a }: { a: ActivityDetail }) {
                 <video src={m.src} controls playsInline preload="metadata" />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={m.src} alt={m.caption ?? ""} loading="lazy" />
+                <Pic src={m.src} alt={m.caption ?? ""} upTo={720} sizes="(max-width: 760px) 100vw, 720px" />
               )}
               {m.caption && <figcaption>{m.caption}</figcaption>}
             </figure>

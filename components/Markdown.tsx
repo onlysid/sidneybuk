@@ -1,5 +1,6 @@
 "use client";
 
+import { Pic } from "./Pic";
 import { Marked, type Token, type Tokens } from "marked";
 import dynamic from "next/dynamic";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -102,7 +103,7 @@ function Embed({ href, text }: { href: string; text: string }) {
   return (
     <figure className="nb-figure">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {kind === "video" ? <video className="nb-video" src={file(href)} controls playsInline preload="metadata" /> : <img src={file(href)} alt={text} loading="lazy" />}
+      {kind === "video" ? <video className="nb-video" src={file(href)} controls playsInline preload="metadata" /> : <Pic src={file(href)} alt={text} upTo={820} sizes="(max-width: 860px) 100vw, 820px" />}
       {text && <figcaption>{text}</figcaption>}
     </figure>
   );

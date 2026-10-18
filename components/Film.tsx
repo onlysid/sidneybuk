@@ -1,5 +1,6 @@
 "use client";
 
+import { Pic } from "./Pic";
 import { Pill } from "@/components/Pill";
 import { Empty } from "./Empty";
 import { useSite } from "@/components/Content";
@@ -12,7 +13,7 @@ import { Tilt } from "./Tilt";
 import { TLink } from "./Transition";
 
 // One picture: a real photograph if the frame has one, otherwise a generated landscape standing in for it.
-export function Picture({ frame, alt = "" }: { frame: Frame; alt?: string }) {
+export function Picture({ frame, alt = "", full, upTo = 640 }: { frame: Frame; alt?: string; full?: boolean; upTo?: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const el = canvas.current;
@@ -31,7 +32,9 @@ export function Picture({ frame, alt = "" }: { frame: Frame; alt?: string }) {
     return () => watch.disconnect();
   }, [frame.seed, frame.src]);
   // eslint-disable-next-line @next/next/no-img-element
-  return frame.src ? <img src={frame.src} alt={alt || frame.caption || ""} loading="lazy" /> : <canvas ref={canvas} role="img" aria-label={alt || frame.caption || "A generated landscape, standing in for a photograph"} />;
+  return frame.src ? (
+    full ? <img src={frame.src} alt={alt || frame.caption || ""} decoding="async" /> : <Pic src={frame.src} alt={alt || frame.caption || ""} upTo={upTo} sizes="(max-width: 640px) 50vw, 33vw" />
+  ) : <canvas ref={canvas} role="img" aria-label={alt || frame.caption || "A generated landscape, standing in for a photograph"} />;
 }
 
 const longDate = (d: string) => new Date(d).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -130,7 +133,7 @@ export function Gallery({ frames }: { frames: Frame[] }) {
           }}
         >
           <figure key={open} onClick={(e) => e.stopPropagation()}>
-            <Picture frame={frames[open]} />
+            <Picture frame={frames[open]} full />
             <figcaption className="mono">
               {open + 1} / {frames.length}
               {frames[open].caption ? ` · ${frames[open].caption}` : ""}
@@ -173,7 +176,7 @@ export function YouTubeFeed() {
               <a key={v.id} href={v.url} target="_blank" rel="noreferrer" className="fp-video glass">
                 <span className="fp-cover">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={v.image} alt="" loading="lazy" />
+                  <Pic src={v.image} alt="" upTo={480} sizes="(max-width: 640px) 100vw, 33vw" />
                   <span className="fp-play" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="currentColor">
                       <path d="M8 5l11 7-11 7z" />

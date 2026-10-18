@@ -33,6 +33,8 @@ const nextConfig: NextConfig = {
   // Builds a self-contained server in .next/standalone, which is what the Docker image runs.
   output: "standalone",
   serverExternalPackages: ["pg", "@react-pdf/renderer"],
+  // Pictures are resized and sent as AVIF/WebP by the site itself (lib/pic.ts); the results are kept for a month.
+  images: { formats: ["image/avif", "image/webp"], deviceSizes: [320, 480, 640, 828, 1080, 1200, 1920], imageSizes: [], qualities: [78], minimumCacheTTL: 2592000, localPatterns: [{ pathname: "/**" }], remotePatterns: [{ protocol: "https", hostname: "covers.openlibrary.org" }, { protocol: "https", hostname: "**.mzstatic.com" }, { protocol: "https", hostname: "i.ytimg.com" }] },
   // This folder is the whole project, whatever else happens to sit in the folders above it.
   outputFileTracingRoot: __dirname,
   // The CV's PDF reads its typefaces from disk at run time; make sure the Docker image carries them.

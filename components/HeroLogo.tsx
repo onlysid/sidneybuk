@@ -9,6 +9,7 @@ import { TLink } from "./Transition";
 const MODES = disciplines.map((d) => d.slug) as Slug[];
 const HOLD = 5200; // ms each mode stays before the logo turns over to the next
 const TURN = 0.75; // seconds a turn-over takes
+const PAGE = 4.8; // seconds a page of "reading" stays before the next
 
 // The line the S follows, as points with a normal and a 0..1 position along its length.
 const LINE = (() => {
@@ -101,9 +102,13 @@ function shape(mode: Slug, j: number, t: number): Shape {
       // A voice: bursts of syllables running along the strings.
       return { off: (u) => 1.9 * pin(u) * Math.max(0, Math.sin(t * 3.6 - u * 8 + j * 1.3)) ** 2 * Math.sin(u * 34 - t * 6 + j * 2) };
     }
-    case "reading":
-      // Lines of text on a page. The highlighter that reads along them is drawn on top.
-      return { off: () => 0, cuts: dashes(j + 11, 0, 0.11, 0.03) };
+    case "reading": {
+      // A page of three lines, read along with a highlighter (drawn on top), then turned: the next page's
+      // lines slide in from the left.
+      const page = Math.floor(t / PAGE);
+      const reveal = Math.min(1, (t - page * PAGE) / 0.45);
+      return { off: () => 0, cuts: dashes(j + 11 + page * 3, 0, 0.11, 0.03).map(([a, b]) => [a, Math.min(b, reveal)] as [number, number]).filter(([a, b]) => b > a) };
+    }
     case "travel":
       // Contour lines either side of a dashed route.
       return j === 1 ? { off: () => 0, cuts: dashes(5, t * 0.1, 0.034, 0.026, true) } : { off: (u) => 1.1 * pin(u) * Math.sin(u * 7 + t * 0.5 + j * 2), wide: () => 0.7 };
@@ -121,7 +126,13 @@ export function HeroLogo() {
   const mode = MODES[index];
   const canvas = useRef<HTMLCanvasElement>(null);
   const sparks = useRef<HTMLSpanElement>(null);
-  const live = useRef({ mode, next: mode, turned: -10, began: 0, plucks: [] as Pluck[], lastU: -1, corners: [...CORNERS[mode]], speed: [0, 0, 0, 0] });
+  // "lost" is the time spent held still while the page rested, so the logo's own clock carries on from where it
+  // stopped rather than jumping; everything that reads the time goes through clock().
+  const live = useRef({ mode, next: mode, turned: -10, began: 0, plucks: [] as Pluck[], lastU: -1, corners: [...CORNERS[mode]], speed: [0, 0, 0, 0], lost: 0, pausedAt: 0, lastNow: 0 });
+  const clock = () => {
+    const s = live.current;
+    return (performance.now() - s.lost - (s.pausedAt ? performance.now() - s.pausedAt : 0)) / 1000;
+  };
   const taps = useRef(0);
   const word = useRef<HTMLSpanElement>(null);
   const [wordWidth, setWordWidth] = useState<number | null>(null);
@@ -135,7 +146,14 @@ export function HeroLogo() {
   // Cycle through the modes; pressing the logo restarts the wait.
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const t = window.setTimeout(() => setIndex((i) => (i + 1) % MODES.length), HOLD);
+    // While the page rests deeply the logo holds still, so the turn-over waits too, otherwise the word under it
+    // would change while the picture did not.
+    let t = 0;
+    const turn = () => {
+      if (document.documentElement.dataset.rest === "deep") t = window.setTimeout(turn, 500);
+      else setIndex((i) => (i + 1) % MODES.length);
+    };
+    t = window.setTimeout(turn, HOLD);
     return () => window.clearTimeout(t);
   }, [index]);
 
@@ -143,7 +161,7 @@ export function HeroLogo() {
     const s = live.current;
     if (s.next !== mode) {
       s.next = mode;
-      s.turned = performance.now() / 1000;
+      s.turned = clock();
     }
   }, [mode]);
 
@@ -208,14 +226,13 @@ export function HeroLogo() {
 
     // Left alone, the page says so (data-rest on <html>): the strings then draw less often, and after longer
     // they hold still, taking up where they left off at the next touch.
-    let lost = 0, pausedAt = 0;
     function draw(ms: number) {
       frame = 0;
       if (!seen) return;
       const rest = document.documentElement.dataset.rest;
       if (!reduce) {
         if (rest === "deep") {
-          if (!pausedAt) pausedAt = ms;
+          if (!s.pausedAt) s.pausedAt = ms;
           frame = -1; // waiting, so nothing else starts a second loop
           window.setTimeout(() => (frame = requestAnimationFrame(draw)), 400);
           return;
@@ -225,14 +242,17 @@ export function HeroLogo() {
           window.setTimeout(() => (frame = requestAnimationFrame(draw)), 33);
         } else frame = requestAnimationFrame(draw);
       }
-      if (pausedAt) {
-        lost += ms - pausedAt;
-        pausedAt = 0;
+      if (s.pausedAt) {
+        s.lost += ms - s.pausedAt;
+        s.pausedAt = 0;
       }
-      const now = (ms - lost) / 1000;
+      const now = (ms - s.lost) / 1000;
+      // How many sixtieths of a second since the last frame: the springs below take the same path at any frame rate.
+      const step = Math.min(3, Math.max(0.25, (now - (s.lastNow || now)) * 60));
+      s.lastNow = now;
 
       // Turning over: squeeze to an edge, swap what the strings are doing, open out again.
-      const p = reduce ? 1 : Math.min(1, (now - s.turned) / TURN);
+      const p = reduce ? 1 : Math.max(0, Math.min(1, (now - s.turned) / TURN));
       if (p >= 0.5 && s.mode !== s.next) {
         s.mode = s.next;
         s.began = now;
@@ -247,8 +267,8 @@ export function HeroLogo() {
       // The outline springs towards the shape for this mode.
       const want = CORNERS[s.next];
       for (let c = 0; c < 4; c++) {
-        s.speed[c] = (s.speed[c] + (want[c] - s.corners[c]) * 0.03) * 0.86;
-        s.corners[c] += s.speed[c];
+        s.speed[c] = (s.speed[c] + (want[c] - s.corners[c]) * 0.03 * step) * Math.pow(0.86, step);
+        s.corners[c] += s.speed[c] * step;
         if (reduce) s.corners[c] = want[c];
       }
 
@@ -383,15 +403,30 @@ export function HeroLogo() {
         g.globalAlpha = 1;
       }
       if (s.mode === "reading") {
-        // A highlighter reads along one line after another.
-        const line = Math.floor(t / 1.5) % 3;
-        const along = (t % 1.5) / 1.5;
-        g.globalAlpha = 0.5 * fade;
-        g.fillStyle = "#fff6c9";
-        g.beginPath();
-        ribbon(line, { off: () => 0, wide: () => 2.3, cuts: [[0.04, 0.04 + along * 0.92]] }, () => 0);
-        g.fill();
-        g.globalAlpha = 1;
+        // A highlighter reads along the lines, one after another, pausing while a page turns; the line being
+        // read is lit a little, and a small dot marks where the eye is.
+        const into = t - Math.floor(t / PAGE) * PAGE;
+        if (into > 0.5) {
+          const r = Math.min(0.999, (into - 0.5) / (PAGE - 0.7));
+          const line = Math.floor(r * 3);
+          const along = (r * 3) % 1;
+          const ease = along < 0.5 ? 2 * along * along : 1 - Math.pow(-2 * along + 2, 2) / 2;
+          const end = 0.04 + ease * 0.92;
+          g.globalAlpha = 0.72 * fade;
+          g.fillStyle = "#ffe98a";
+          g.beginPath();
+          ribbon(line, { off: () => 0, wide: () => 2.4, cuts: [[0.04, end]] }, () => 0);
+          g.fill();
+          // The eye: a dot at the end of what has been read so far.
+          const q = at(end);
+          const d = (line - 1) * GAP;
+          g.globalAlpha = 0.9 * fade;
+          g.fillStyle = "#fff";
+          g.beginPath();
+          g.arc(q.x + q.nx * d, q.y + q.ny * d, 2.1, 0, Math.PI * 2);
+          g.fill();
+          g.globalAlpha = 1;
+        }
       }
       if (s.mode === "sport") {
         // A padel court from above: glass walls all round, doubles, solid bats with holes in them, and the shot that makes it padel: the ball comes off the…
@@ -563,13 +598,13 @@ export function HeroLogo() {
     const s = live.current;
     if (Math.hypot(best.x - x, best.y - y) > 16 || Math.abs(best.u - s.lastU) < 0.08) return;
     s.lastU = best.u;
-    s.plucks.push({ at: performance.now() / 1000, u: best.u, power: 1.8 });
+    s.plucks.push({ at: clock(), u: best.u, power: 1.8 });
     if (s.plucks.length > 6) s.plucks.shift();
   };
 
   // Pressing it throws sparks, plays a note if sound is on, and turns to the next mode.
   const onPress = () => {
-    live.current.plucks.push({ at: performance.now() / 1000, u: 0.5, power: 3 });
+    live.current.plucks.push({ at: clock(), u: 0.5, power: 3 });
     if (soundOn()) note([196, 246.94, 293.66, 329.63, 392][taps.current++ % 5]);
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches && sparks.current) {
       for (let n = 0; n < 14; n++) {
