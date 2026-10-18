@@ -1,6 +1,7 @@
+import { CvGet } from "@/components/CvGet";
 import { Footer } from "@/components/Footer";
 import { TLink } from "@/components/Transition";
-import { bulletsOf, linesOf, rowsOf, runsOf, stamp, type Cv } from "@/lib/cv";
+import { runsOf, stamp, type Cv } from "@/lib/cv";
 import { site } from "@/lib/site";
 
 const d = (ms: number) => ({ ["--delay" as string]: `${ms}ms` }) as React.CSSProperties;
@@ -13,20 +14,26 @@ function Runs({ text }: { text: string }) {
     </>
   );
 }
-function Rows({ text }: { text: string }) {
+function Chips({ items }: { items: string[] }) {
   return (
-    <>
-      {rowsOf(text).map((row, i) => (
-        <p key={i} className="cv-row">
-          {row.map((item, k) => (
-            <span key={k}>
-              {k > 0 && <i aria-hidden="true"> | </i>}
-              {item}
-            </span>
-          ))}
-        </p>
+    <div className="cv-chips">
+      {items.map((item, k) => (
+        <span key={k} className="cv-chip">
+          {item}
+        </span>
       ))}
-    </>
+    </div>
+  );
+}
+function Bullets({ items }: { items: string[] }) {
+  return (
+    <ul className="cv-bullets">
+      {items.map((b, k) => (
+        <li key={k}>
+          <Runs text={b} />
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -44,88 +51,92 @@ export function CvView({ cv }: { cv: Cv }) {
           <p className="lede rise" style={d(160)}>
             Last edited {stamp(cv.updatedAt)}. The PDF is made from this page, in either colour.
           </p>
-          <div className="cv-get rise" style={d(220)}>
-            <a className="btn btn-primary" href="/cv/pdf?theme=light" target="_blank" rel="noreferrer">
-              PDF, light
-            </a>
-            <a className="btn btn-ghost" href="/cv/pdf?theme=dark" target="_blank" rel="noreferrer">
-              PDF, dark
-            </a>
+          <div className="rise" style={d(220)}>
+            <CvGet name={site.name} />
           </div>
         </div>
       </section>
       <section className="wrap section">
         <article className="cv glass rise" style={d(280)}>
           <header className="cv-head">
-            <h2>{site.name}</h2>
-            <p className="cv-contact mono">
+            <div className="cv-who">
+              <img className="cv-mark" src="/icons/icon-192.png" alt="" width={40} height={40} />
+              <div>
+                <h2>{site.name}</h2>
+                {cv.headline && <p className="cv-headline mono">{cv.headline}</p>}
+              </div>
+            </div>
+            <p className="cv-reach">
               <a href={site.url}>{site.domain}</a>
-              {cv.phone && (
-                <>
-                  <i aria-hidden="true"> | </i>
-                  <a href={`tel:${cv.phone.replace(/\s+/g, "")}`}>{cv.phone}</a>
-                </>
-              )}
-              <i aria-hidden="true"> | </i>
               <a href={`mailto:${site.email}`}>{site.email}</a>
+              {cv.phone && <a href={`tel:${cv.phone.replace(/\s+/g, "")}`}>{cv.phone}</a>}
               {cv.linkedin && (
-                <>
-                  <i aria-hidden="true"> | </i>
-                  <a href={cv.linkedin} target="_blank" rel="noreferrer">
-                    LinkedIn
-                  </a>
-                </>
+                <a href={cv.linkedin} target="_blank" rel="noreferrer">
+                  {cv.linkedin.replace(/^https?:\/\/(www\.)?/, "")}
+                </a>
               )}
             </p>
-            {cv.summary.trim() && (
-              <p className="cv-summary">
-                <Runs text={cv.summary.trim()} />
-              </p>
-            )}
           </header>
-          {cv.skills.trim() && (
-            <section className="cv-section">
-              <h3>Skills</h3>
-              <Rows text={cv.skills} />
-            </section>
+          <div className="cv-stripe" aria-hidden="true" />
+          {cv.summary && (
+            <p className="cv-summary">
+              <Runs text={cv.summary} />
+            </p>
           )}
-          {cv.jobs.length > 0 && (
+          {cv.skills.length > 0 && (
             <section className="cv-section">
-              <h3>Experience</h3>
-              {cv.jobs.map((j, i) => (
-                <div key={i} className="cv-job">
-                  <h4>
-                    {[j.role, j.org].filter(Boolean).join(", ")}
-                    {j.when && <span> — {j.when}</span>}
-                  </h4>
-                  <ul>
-                    {bulletsOf(j.bullets).map((b, k) => (
-                      <li key={k} data-depth={b.depth}>
-                        <Runs text={b.text} />
-                      </li>
-                    ))}
-                  </ul>
+              <h3 className="mono">Skills</h3>
+              {cv.skills.map((g, i) => (
+                <div key={i} className="cv-skills">
+                  <span className="cv-skills-label mono">{g.label}</span>
+                  <Chips items={g.items} />
                 </div>
               ))}
             </section>
           )}
-          {cv.education.trim() && (
+          {cv.jobs.length > 0 && (
             <section className="cv-section">
-              <h3>Education</h3>
-              {linesOf(cv.education).map((l, i) => (
+              <h3 className="mono">Experience</h3>
+              {cv.jobs.map((j, i) => (
+                <div key={i} className="cv-job">
+                  <div className="cv-job-head">
+                    <h4>
+                      {j.role}
+                      {j.org && <span> · {j.org}</span>}
+                    </h4>
+                    {j.when && <span className="cv-when mono">{j.when}</span>}
+                  </div>
+                  <Bullets items={j.bullets} />
+                  {j.projects.map((p, k) => (
+                    <div key={k} className="cv-project">
+                      <div className="cv-project-head">
+                        <b>{p.name}</b>
+                        {p.role && <span className="cv-pill mono">{p.role}</span>}
+                      </div>
+                      <Bullets items={p.bullets} />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </section>
+          )}
+          {cv.education.length > 0 && (
+            <section className="cv-section">
+              <h3 className="mono">Education</h3>
+              {cv.education.map((l, i) => (
                 <p key={i} className="cv-line">
                   <Runs text={l} />
                 </p>
               ))}
             </section>
           )}
-          {cv.interests.trim() && (
+          {cv.interests.length > 0 && (
             <section className="cv-section">
-              <h3>Interests</h3>
-              <Rows text={cv.interests} />
+              <h3 className="mono">Interests</h3>
+              <Chips items={cv.interests} />
             </section>
           )}
-          <p className="cv-stamp mono">Last edited {stamp(cv.updatedAt)}</p>
+          <p className="cv-stamp mono">Last edited {stamp(cv.updatedAt)} · {site.domain}/cv</p>
         </article>
       </section>
       <Footer />

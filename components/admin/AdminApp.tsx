@@ -8,7 +8,7 @@ import { mutate } from "swr";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, type AdminActivity, type KeyGroup, type Media, type AppleMusicStatus, type Passkeys, type StravaStatus } from "@/lib/admin/api";
-import { stamp as cvStamp, type Cv, type CvJob } from "@/lib/cv";
+import { stamp as cvStamp, type Cv, type CvJob, type CvProject } from "@/lib/cv";
 import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import { KIND_NAMES, markOf, PADEL_KINDS, padelResult, RIDE_KINDS, scoreOf, writtenUp, type ActivityLog } from "@/lib/training";
 import { counted, lastOf, logged, numberOf, say as sayLift, today, unlogged, type Lift } from "@/lib/gym";
@@ -1037,6 +1037,96 @@ function SettingsScreen() {
   );
 }
 
+// A list of short texts, one field each: Enter at the end of a line starts the next, Backspace on an empty one
+// removes it, and the arrows move a line. Used for bullets, chips and lines of the CV.
+function Lines({ id, value, onChange, placeholder, one = "line", chips }: { id: string; value: string[]; onChange: (v: string[]) => void; placeholder?: string; one?: string; chips?: boolean }) {
+  const flip = useFlip<HTMLDivElement>();
+  const keys = useRef<number[]>([]);
+  const tally = useRef(0);
+  while (keys.current.length < value.length) keys.current.push(++tally.current);
+  if (keys.current.length > value.length) keys.current.length = value.length;
+  const focus = (n: number) => window.requestAnimationFrame(() => document.getElementById(`${id}-${n}`)?.focus());
+  const set = (n: number, text: string) => onChange(value.map((v, k) => (k === n ? text : v)));
+  const insert = (n: number) => {
+    keys.current.splice(n + 1, 0, ++tally.current);
+    onChange([...value.slice(0, n + 1), "", ...value.slice(n + 1)]);
+    focus(n + 1);
+  };
+  const remove = (n: number) => {
+    keys.current.splice(n, 1);
+    onChange(value.filter((_, k) => k !== n));
+    focus(Math.max(0, n - 1));
+  };
+  const move = (n: number, by: number) => {
+    const to = n + by;
+    if (to < 0 || to >= value.length) return;
+    const next = [...value], k = [...keys.current];
+    [next[n], next[to]] = [next[to], next[n]];
+    [k[n], k[to]] = [k[to], k[n]];
+    keys.current = k;
+    onChange(next);
+    focus(to);
+  };
+  return (
+    <div className="desk-lines" data-chips={chips || undefined} ref={flip}>
+      {value.map((text, n) => (
+        <div className="desk-line" key={keys.current[n]}>
+          {chips ? (
+            <input
+              id={`${id}-${n}`}
+              value={text}
+              placeholder={placeholder}
+              onChange={(e) => set(n, e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.preventDefault(), insert(n));
+                else if (e.key === "Backspace" && !text && value.length > 1) (e.preventDefault(), remove(n));
+                else if (e.key === "ArrowUp" && e.altKey) (e.preventDefault(), move(n, -1));
+                else if (e.key === "ArrowDown" && e.altKey) (e.preventDefault(), move(n, 1));
+              }}
+            />
+          ) : (
+            <textarea
+              id={`${id}-${n}`}
+              rows={1}
+              value={text}
+              placeholder={placeholder}
+              onChange={(e) => set(n, e.target.value)}
+              onInput={(e) => {
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = `${el.scrollHeight}px`;
+              }}
+              ref={(el) => {
+                if (el) el.style.height = `${el.scrollHeight}px`;
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) (e.preventDefault(), insert(n));
+                else if (e.key === "Backspace" && !text && value.length > 1) (e.preventDefault(), remove(n));
+                else if (e.key === "ArrowUp" && e.altKey) (e.preventDefault(), move(n, -1));
+                else if (e.key === "ArrowDown" && e.altKey) (e.preventDefault(), move(n, 1));
+              }}
+            />
+          )}
+          <span className="desk-line-tools">
+            <button type="button" aria-label="Move up" disabled={n === 0} onClick={() => move(n, -1)}>
+              ↑
+            </button>
+            <button type="button" aria-label="Move down" disabled={n === value.length - 1} onClick={() => move(n, 1)}>
+              ↓
+            </button>
+            <button type="button" aria-label={`Remove this ${one}`} onClick={() => remove(n)}>
+              ×
+            </button>
+          </span>
+        </div>
+      ))}
+      <button type="button" className="desk-btn desk-quiet desk-line-add" onClick={() => insert(value.length - 1)}>
+        Add {one === "line" ? "a line" : `a ${one}`}
+      </button>
+    </div>
+  );
+}
+
 // /admin/cv: the CV, which /cv shows and turns into a PDF.
 function CvScreen() {
   const toast = useContext(Toast);
@@ -1044,13 +1134,13 @@ function CvScreen() {
   const [cv, setCv] = useState<Cv | null>(null);
   const [dirty, settle] = useChanged(cv, !!cv);
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(0);
   const flip = useFlip<HTMLDivElement>();
-  // A key of its own per job, so moving one slides it rather than redrawing the rest.
-  const keys = useRef(new WeakMap<CvJob, number>());
+  const keys = useRef(new WeakMap<object, number>());
   const tally = useRef(0);
-  const keyOf = (j: CvJob) => {
-    let k = keys.current.get(j);
-    if (k === undefined) keys.current.set(j, (k = ++tally.current));
+  const keyOf = (o: object) => {
+    let k = keys.current.get(o);
+    if (k === undefined) keys.current.set(o, (k = ++tally.current));
     return k;
   };
   useEffect(() => {
@@ -1058,20 +1148,21 @@ function CvScreen() {
   }, [toast]);
   if (!cv) return <Waiting />;
   const put = (next: Partial<Cv>) => setCv({ ...cv, ...next });
-  const job = (i: number, next: Partial<CvJob>) =>
-    put({
-      jobs: cv.jobs.map((j, k) => {
-        if (k !== i) return j;
-        const fresh = { ...j, ...next };
-        keys.current.set(fresh, keyOf(j));
-        return fresh;
-      }),
+  const replace = <T extends object>(list: T[], i: number, next: Partial<T>) =>
+    list.map((item, k) => {
+      if (k !== i) return item;
+      const fresh = { ...item, ...next };
+      keys.current.set(fresh, keyOf(item));
+      return fresh;
     });
-  const move = (i: number, by: number) => {
+  const job = (i: number, next: Partial<CvJob>) => put({ jobs: replace(cv.jobs, i, next) });
+  const project = (i: number, k: number, next: Partial<CvProject>) => job(i, { projects: replace(cv.jobs[i].projects, k, next) });
+  const moveJob = (i: number, by: number) => {
     const jobs = [...cv.jobs];
     const [one] = jobs.splice(i, 1);
     jobs.splice(i + by, 0, one);
     put({ jobs });
+    setOpen(i + by);
   };
   const save = async () => {
     setBusy(true);
@@ -1085,13 +1176,6 @@ function CvScreen() {
     }
     setBusy(false);
   };
-  const text = (label: string, key: "summary" | "skills" | "education" | "interests", rows: number, help: string) => (
-    <div className="desk-field" data-wide="true">
-      <label htmlFor={`cv-${key}`}>{label}</label>
-      <textarea id={`cv-${key}`} rows={rows} value={cv[key]} onChange={(e) => put({ [key]: e.target.value })} />
-      <p className="desk-help">{help}</p>
-    </div>
-  );
   return (
     <form
       className="desk-editor"
@@ -1114,72 +1198,153 @@ function CvScreen() {
         </div>
       </Head>
       <p className="desk-lede">
-        What is here becomes the page at /cv and both PDFs the moment it is saved, stamped &ldquo;Last edited {cvStamp(cv.updatedAt)}&rdquo;. Write <code>**like this**</code> for bold. The name and email come from the site itself.
+        What is here becomes the page at /cv and both PDFs the moment it is saved, stamped &ldquo;Last edited {cvStamp(cv.updatedAt)}&rdquo;. Write <code>**like this**</code> for bold. In any list, Enter starts the next line, Backspace on an empty line removes it, and Alt + arrows move one. The name and email come from the site itself.
       </p>
+
       <section className="desk-panel glass">
         <h2 className="desk-h2">Top</h2>
         <div className="desk-fields">
           <div className="desk-field">
+            <label htmlFor="cv-headline">Headline</label>
+            <input id="cv-headline" value={cv.headline} onChange={(e) => put({ headline: e.target.value })} placeholder="Software engineer" />
+          </div>
+          <div className="desk-field">
             <label htmlFor="cv-phone">Phone</label>
             <input id="cv-phone" value={cv.phone} onChange={(e) => put({ phone: e.target.value })} />
           </div>
-          <div className="desk-field">
+          <div className="desk-field" data-wide="true">
             <label htmlFor="cv-linkedin">LinkedIn address</label>
             <input id="cv-linkedin" value={cv.linkedin} onChange={(e) => put({ linkedin: e.target.value })} placeholder="https://www.linkedin.com/in/…" />
           </div>
-          {text("Summary", "summary", 4, "A few lines under the name.")}
-          {text("Skills", "skills", 4, "One row per line, the items separated by | (a vertical bar).")}
+          <div className="desk-field" data-wide="true">
+            <label htmlFor="cv-summary">Summary</label>
+            <textarea id="cv-summary" rows={4} value={cv.summary} onChange={(e) => put({ summary: e.target.value })} />
+          </div>
         </div>
       </section>
+
+      <section className="desk-panel glass">
+        <h2 className="desk-h2">Skills</h2>
+        <p className="desk-help">Groups of chips. The group's name sits beside its chips.</p>
+        {cv.skills.map((g, i) => (
+          <div className="desk-field cv-group" data-wide="true" key={keyOf(g)}>
+            <div className="desk-row">
+              <input aria-label="Group name" className="cv-group-name" value={g.label} placeholder="Languages" onChange={(e) => put({ skills: replace(cv.skills, i, { label: e.target.value }) })} />
+              <button type="button" className="desk-btn desk-quiet desk-danger" onClick={() => put({ skills: cv.skills.filter((_, k) => k !== i) })}>
+                Remove group
+              </button>
+            </div>
+            <Lines id={`cv-skill-${i}`} chips one="skill" value={g.items.length ? g.items : [""]} onChange={(items) => put({ skills: replace(cv.skills, i, { items }) })} />
+          </div>
+        ))}
+        <button type="button" className="desk-btn desk-quiet" onClick={() => put({ skills: [...cv.skills, { label: "", items: [""] }] })}>
+          Add a group
+        </button>
+      </section>
+
       <section className="desk-panel glass">
         <h2 className="desk-h2">Experience</h2>
-        <div className="desk-fields cv-jobs" ref={flip}>
+        <div className="desk-list cv-jobs" ref={flip}>
           {cv.jobs.map((j, i) => (
-            <div className="desk-field cv-job-edit" data-wide="true" key={keyOf(j)}>
-              <div className="desk-fields">
-                <div className="desk-field">
-                  <label htmlFor={`cv-role-${i}`}>Role</label>
-                  <input id={`cv-role-${i}`} value={j.role} onChange={(e) => job(i, { role: e.target.value })} />
-                </div>
-                <div className="desk-field">
-                  <label htmlFor={`cv-org-${i}`}>Where</label>
-                  <input id={`cv-org-${i}`} value={j.org} onChange={(e) => job(i, { org: e.target.value })} />
-                </div>
-                <div className="desk-field">
-                  <label htmlFor={`cv-when-${i}`}>When</label>
-                  <input id={`cv-when-${i}`} value={j.when} onChange={(e) => job(i, { when: e.target.value })} placeholder="04/2023 – present" />
-                </div>
-                <div className="desk-field" data-wide="true">
-                  <label htmlFor={`cv-bullets-${i}`}>What I did</label>
-                  <textarea id={`cv-bullets-${i}`} rows={Math.min(18, Math.max(4, j.bullets.split("\n").length + 1))} value={j.bullets} onChange={(e) => job(i, { bullets: e.target.value })} />
-                  <p className="desk-help">A line starting &ldquo;- &rdquo; is a bullet; indent it two spaces (&ldquo;  - &rdquo;) to put it inside the one above.</p>
-                </div>
+            <div className="desk-item" key={keyOf(j)} data-open={open === i}>
+              <div className="desk-item-head">
+                <button type="button" className="desk-item-name" aria-expanded={open === i} onClick={() => setOpen(open === i ? -1 : i)}>
+                  <b>{j.role || "New job"}</b>
+                  {j.org && <span> · {j.org}</span>}
+                  {j.when && <em> {j.when}</em>}
+                </button>
+                <span className="desk-row">
+                  <button type="button" className="desk-btn desk-quiet" disabled={i === 0} onClick={() => moveJob(i, -1)} aria-label="Move up">
+                    ↑
+                  </button>
+                  <button type="button" className="desk-btn desk-quiet" disabled={i === cv.jobs.length - 1} onClick={() => moveJob(i, 1)} aria-label="Move down">
+                    ↓
+                  </button>
+                </span>
               </div>
-              <div className="desk-row">
-                <button type="button" className="desk-btn desk-quiet" disabled={i === 0} onClick={() => move(i, -1)}>
-                  Up
-                </button>
-                <button type="button" className="desk-btn desk-quiet" disabled={i === cv.jobs.length - 1} onClick={() => move(i, 1)}>
-                  Down
-                </button>
-                <button type="button" className="desk-btn desk-quiet desk-danger" onClick={async () => (await confirmBox(`Remove "${j.role || "this job"}"?`, { yes: "Remove" })) && put({ jobs: cv.jobs.filter((_, k) => k !== i) })}>
-                  Remove
-                </button>
-              </div>
+              {open === i && (
+                <div className="desk-fields cv-job-edit">
+                  <div className="desk-field">
+                    <label htmlFor={`cv-role-${i}`}>Role</label>
+                    <input id={`cv-role-${i}`} value={j.role} onChange={(e) => job(i, { role: e.target.value })} />
+                  </div>
+                  <div className="desk-field">
+                    <label htmlFor={`cv-org-${i}`}>Where</label>
+                    <input id={`cv-org-${i}`} value={j.org} onChange={(e) => job(i, { org: e.target.value })} />
+                  </div>
+                  <div className="desk-field">
+                    <label htmlFor={`cv-when-${i}`}>When</label>
+                    <input id={`cv-when-${i}`} value={j.when} onChange={(e) => job(i, { when: e.target.value })} placeholder="04/2023 – present" />
+                  </div>
+                  <div className="desk-field" data-wide="true">
+                    <label htmlFor={`cv-bullets-${i}-0`}>What I did</label>
+                    <Lines id={`cv-bullets-${i}`} one="point" value={j.bullets.length ? j.bullets : [""]} onChange={(bullets) => job(i, { bullets })} />
+                  </div>
+                  <div className="desk-field" data-wide="true">
+                    <label>Projects within this job</label>
+                    <p className="desk-help">Each gets its own card on the CV, with a name, a role pill and its own points.</p>
+                    {j.projects.map((p, k) => (
+                      <div className="cv-project-edit" key={keyOf(p)}>
+                        <div className="desk-fields">
+                          <div className="desk-field">
+                            <label htmlFor={`cv-pname-${i}-${k}`}>Project</label>
+                            <input id={`cv-pname-${i}-${k}`} value={p.name} onChange={(e) => project(i, k, { name: e.target.value })} placeholder="TOM – Table Operations Manager" />
+                          </div>
+                          <div className="desk-field">
+                            <label htmlFor={`cv-prole-${i}-${k}`}>My role on it</label>
+                            <input id={`cv-prole-${i}-${k}`} value={p.role} onChange={(e) => project(i, k, { role: e.target.value })} placeholder="Lead Engineer" />
+                          </div>
+                          <div className="desk-field" data-wide="true">
+                            <label htmlFor={`cv-pb-${i}-${k}-0`}>Points</label>
+                            <Lines id={`cv-pb-${i}-${k}`} one="point" value={p.bullets.length ? p.bullets : [""]} onChange={(bullets) => project(i, k, { bullets })} />
+                          </div>
+                        </div>
+                        <div className="desk-row">
+                          <button type="button" className="desk-btn desk-quiet" disabled={k === 0} onClick={() => { const ps = [...j.projects]; [ps[k - 1], ps[k]] = [ps[k], ps[k - 1]]; job(i, { projects: ps }); }}>
+                            Up
+                          </button>
+                          <button type="button" className="desk-btn desk-quiet" disabled={k === j.projects.length - 1} onClick={() => { const ps = [...j.projects]; [ps[k + 1], ps[k]] = [ps[k], ps[k + 1]]; job(i, { projects: ps }); }}>
+                            Down
+                          </button>
+                          <button type="button" className="desk-btn desk-quiet desk-danger" onClick={async () => (await confirmBox(`Remove "${p.name || "this project"}"?`, { yes: "Remove" })) && job(i, { projects: j.projects.filter((_, x) => x !== k) })}>
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    <button type="button" className="desk-btn desk-quiet" onClick={() => job(i, { projects: [...j.projects, { name: "", role: "", bullets: [""] }] })}>
+                      Add a project
+                    </button>
+                  </div>
+                  <div className="desk-row" style={{ justifyContent: "flex-end" }}>
+                    <button type="button" className="desk-btn desk-quiet desk-danger" onClick={async () => (await confirmBox(`Remove "${j.role || "this job"}"?`, { yes: "Remove" })) && put({ jobs: cv.jobs.filter((_, k) => k !== i) })}>
+                      Remove this job
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
-        <button type="button" className="desk-btn desk-quiet" onClick={() => put({ jobs: [...cv.jobs, { role: "", org: "", when: "", bullets: "- " }] })}>
+        <button type="button" className="desk-btn desk-quiet" onClick={() => { put({ jobs: [...cv.jobs, { role: "", org: "", when: "", bullets: [""], projects: [] }] }); setOpen(cv.jobs.length); }}>
           Add a job
         </button>
       </section>
+
       <section className="desk-panel glass">
         <h2 className="desk-h2">Education and interests</h2>
         <div className="desk-fields">
-          {text("Education", "education", 4, "One line each.")}
-          {text("Interests", "interests", 3, "One row per line, the items separated by |.")}
+          <div className="desk-field" data-wide="true">
+            <label htmlFor="cv-edu-0">Education</label>
+            <Lines id="cv-edu" value={cv.education.length ? cv.education : [""]} onChange={(education) => put({ education })} />
+          </div>
+          <div className="desk-field" data-wide="true">
+            <label htmlFor="cv-int-0">Interests</label>
+            <Lines id="cv-int" chips one="interest" value={cv.interests.length ? cv.interests : [""]} onChange={(interests) => put({ interests })} />
+          </div>
         </div>
       </section>
+
       <div className="desk-bar glass">
         <span className="desk-bar-state mono" data-dirty={dirty}>
           {busy ? "Saving…" : dirty ? "Not saved yet" : "Saved"}

@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
   // This folder is the whole project, whatever else happens to sit in the folders above it.
   outputFileTracingRoot: __dirname,
   // The CV's PDF reads its typefaces from disk at run time; make sure the Docker image carries them.
-  outputFileTracingIncludes: { "/cv/pdf": ["./lib/cv/fonts/**"] },
+  outputFileTracingIncludes: { "/cv/pdf": ["./lib/cv/fonts/**", "./public/icons/icon-512.png"] },
   turbopack: { root: __dirname },
   // Lets a page say forbidden(), which shows app/forbidden.tsx.
   experimental: { authInterrupts: true },
